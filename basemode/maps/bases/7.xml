@@ -1,0 +1,11 @@
+<Name>AM</Name>
+<Author>Stoku</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>10</Weather>
+<Hour>0</Hour>
+
+<Spawns>
+	<player x="1156.90" y="-94.69" z="7.6" angle="0.0"/>
+	<marker x="1139.50" y="-102.79" z="7.6"/>
+</Spawns>

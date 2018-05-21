@@ -1,0 +1,19 @@
+<!-- Custom Content -->
+
+<!-- Colours -->
+<!-- These add custom blips colours to the game. For use with teams -->
+<colour r="0" g="0" b="255" a="0"/>
+<colour r="255" g="0" b="0" a="1"/>
+
+<spawnscreen x="-700.10" y="-181.72" z="20.01" angle="23.717" camx="-695.10" camy="-192.97" camz="18.70" camlookx="-941.80" camlooky="130.87" camlookz="78.86" />
+<spawnscreen x="-700.10" y="-181.72" z="20.01" angle="23.717" camx="-695.10" camy="-195.97" camz="18.70" camlookx="-941.80" camlooky="230.87" camlookz="78.86" />
+<!--
+<spawnscreen x="-700.10" y="-181.72" z="20.01" angle="193.717" camx="-695.10" camy="-192.97" camz="18.70" camlookx="-941.80" camlooky="130.87" camlookz="48.86" />
+-->
+<!-- Classes -->
+<class team="0" skin="103" colour="1" x="165.10" y="-1003.50" z="29.53" angle="270.0" sscreen="0"/>
+<class team="1" skin="21" colour="2" x="165.74" y="-990.81" z="29.53" angle="176.229" sscreen="1"/>
+
+<!-- Scripts -->
+<!-- Specifies which scripts will be loaded on server start -->
+<script folder="basemode" />

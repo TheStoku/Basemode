@@ -1,0 +1,11 @@
+<Name>SI - Parking podziemny</Name>
+<Author>Stoku ft. mrSychu</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>0</Weather>
+<Hour>23</Hour>
+
+<Spawns>
+	<player x="206.57" y="-1187.70" z="20.4" angle="271.543"/>
+	<marker x="206.57" y="-1187.70" z="20.4"/>
+</Spawns>

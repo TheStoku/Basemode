@@ -1,0 +1,11 @@
+<Name>Bitch'n Dog</Name>
+<Author>Stoku</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>13</Weather>
+<Hour>0</Hour>
+
+<Spawns>
+	<player x="1210.10" y="-788.40" z="14.66" angle="227.139"/>
+	<marker x="1203.50" y="-802.30" z="14.68"/>
+</Spawns>

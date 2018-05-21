@@ -1,0 +1,11 @@
+<Name>Chinatown</Name>
+<Author>Stoku</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>13</Weather>
+<Hour>0</Hour>
+
+<Spawns>
+	<player x="861.20" y="-1002.40" z="5.05" angle="0.939946"/>
+	<marker  x="861.50" y="-987.20" z="5.24"/>
+</Spawns>
