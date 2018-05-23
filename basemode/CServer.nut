@@ -144,7 +144,8 @@ class CVoteManager
 	function VoteEnd()
 	{
 		g_Timer.Stop();
-		
+		IsVotingInProgress = false;
+
 		if ( Yes > No )
 		{
 			Message( "*** Voting finished! (Yes: " + Yes + "/No: " + No + ")" );
@@ -210,8 +211,8 @@ class CPlayerManager
 			adminList.rawset( pPlayer.Name, pPlayer.ID );
 		}
 
-		// Store admins LUID, IP, etc
-		WriteIniString( "Scripts/basemode/admins.ini", pPlayer.LUID, "Name", pPlayer.Name );
+		// Store admins LUID, IP, etc, INI DOESNT WORK ANYMORE
+		//WriteIniString( "Scripts/basemode/admins.ini", pPlayer.LUID, "Name", pPlayer.Name );
 		//WriteIniString( "Scripts/basemode/admins.ini", pPlayer.LUID, "IP", pPlayer.IP );
 		//WriteIniInteger( "Scripts/basemode/admins.ini", pPlayer.LUID, "Level", iLevel );
 	}
