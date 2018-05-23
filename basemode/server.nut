@@ -422,8 +422,8 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		local pAddedPlayer = FindPlayer( szText );
 		if ( pAddedPlayer )
 		{
+			pPlayerManager.SetTeam( pAddedPlayer );
 			pPlayerManager.Add( pAddedPlayer );
-			pPlayerManager.SetTeam( pPlayer );
 		}
 	}
 	else if ( szCommand == "type" )
