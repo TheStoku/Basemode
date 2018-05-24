@@ -6,6 +6,8 @@
 local SCRIPT_VERSION			= "1.0-R1";
 local SCRIPT_AUTHOR				= "Stoku";
 
+local SETTING_MUTE				= false;
+
 g_pLocalPlayer <- FindLocalPlayer();
 g_pMarker <- null;
 g_Timer <- null;
@@ -79,11 +81,11 @@ function onScriptLoad()
 
 	//PlayFrontEndTrack( 191 );
 	
-	BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
-	BindKey( '9', BINDTYPE_DOWN, "SpectatePlayer_Previous" );
+	//BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
+	//BindKey( '9', BINDTYPE_DOWN, "SpectatePlayer_Previous" );
 	
-	//BindKey( '0', BINDTYPE_DOWN, "plus" );
-	//BindKey( '9', BINDTYPE_DOWN, "minus" );
+	BindKey( '0', BINDTYPE_DOWN, "plus" );
+	BindKey( '9', BINDTYPE_DOWN, "minus" );
 	
 	BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
 	
@@ -117,30 +119,30 @@ function onScriptLoad()
 	g_ScoreLabel.Alpha = 90;
 	g_ScoreLabel.Flags = FLAG_SHADOW;
 	g_ScoreLabel.Visible = true;
-	g_ScoreLabel.FontName = "Arial";
+	g_ScoreLabel.FontName = "Veranda";
 	g_ScoreLabel.FontSize = 16;
 	g_ScoreLabel.FontTags = TAG_BOLD;
 	g_ScoreLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
 	g_StatsPanel.AddChild( g_ScoreLabel );
 	
-	g_Team1StatsLabel = GUILabel( VectorScreen( 5, 10 ), ScreenSize( ScreenWidth, 25 ), "RED" );
+	g_Team1StatsLabel = GUILabel( VectorScreen( 5, 11 ), ScreenSize( ScreenWidth, 25 ), "RED (ATTACK)" );
 	g_Team1StatsLabel.TextColour = Colour( 255, 0, 0 );
-	g_Team1StatsLabel.Alpha = 130;
+	g_Team1StatsLabel.Alpha = 100;
 	g_Team1StatsLabel.Flags = FLAG_SHADOW;
 	g_Team1StatsLabel.Visible = true;
-	g_Team1StatsLabel.FontName = "Segoe UI";
-	g_Team1StatsLabel.FontSize = 15;
+	g_Team1StatsLabel.FontName = "Veranda";
+	g_Team1StatsLabel.FontSize = 14;
 	//g_Team1StatsLabel.FontTags = TAG_BOLD;
 	g_Team1StatsLabel.TextAlignment = ALIGN_MIDDLE_LEFT;
 	g_StatsPanel.AddChild( g_Team1StatsLabel );
 	
-	g_Team2StatsLabel = GUILabel( VectorScreen( ScreenWidth - 5, 10 ), ScreenSize( ScreenWidth, 25 ), "BLUE" );
-	g_Team2StatsLabel.TextColour = Colour( 0, 255, 0 );
-	g_Team2StatsLabel.Alpha = 130;
+	g_Team2StatsLabel = GUILabel( VectorScreen( ScreenWidth - 5, 11 ), ScreenSize( ScreenWidth, 25 ), "BLUE (DEFENCE)" );
+	g_Team2StatsLabel.TextColour = Colour( 0, 0, 255 );
+	g_Team2StatsLabel.Alpha = 100;
 	g_Team2StatsLabel.Flags = FLAG_SHADOW;
 	g_Team2StatsLabel.Visible = true;
-	g_Team2StatsLabel.FontName = "Segoe UI";
-	g_Team2StatsLabel.FontSize = 15;
+	g_Team2StatsLabel.FontName = "Veranda";
+	g_Team2StatsLabel.FontSize = 14;
 	//g_Team2StatsLabel.FontTags = TAG_BOLD;
 	g_Team2StatsLabel.TextAlignment = ALIGN_MIDDLE_RIGHT;
 	g_StatsPanel.AddChild( g_Team2StatsLabel );
@@ -150,7 +152,7 @@ function onScriptLoad()
 	g_SpawnScreenLabel.Alpha = 255;
 	g_SpawnScreenLabel.Flags = FLAG_SHADOW;
 	g_SpawnScreenLabel.Visible = true;
-	g_SpawnScreenLabel.FontName = "Segoe UI";
+	g_SpawnScreenLabel.FontName = "Trebuchet MS";
 	g_SpawnScreenLabel.FontSize = 30;
 	g_SpawnScreenLabel.FontTags = TAG_BOLD;
 	g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
@@ -203,11 +205,12 @@ function onScriptLoad()
 	g_SpeedoLabel.FontSize = 16;
 	AddGUILayer( g_SpeedoLabel );
 	
-	g_TeamChatEditbox = GUIEditbox( VectorScreen( ScreenWidth-300, 0 ), ScreenSize( 300, 25 ));
-	g_TeamChatEditbox.Colour = Colour( 0, 0, 0 );
+	//g_TeamChatEditbox = GUIEditbox( VectorScreen( ScreenWidth-300, 0 ), ScreenSize( 300, 25 ));
+	g_TeamChatEditbox = GUIEditbox( VectorScreen( 5, ( ScreenHeight / 2 )), ScreenSize( 500, 25 ));
+	g_TeamChatEditbox.Colour = Colour( 0, 255, 0 );
 	//g_TeamChatEditbox.FontTags = TAG_BOLD;
 	g_TeamChatEditbox.TextColour = Colour( 255, 255, 255 );
-	g_TeamChatEditbox.Alpha = 20;
+	g_TeamChatEditbox.Alpha = 50;
 	g_TeamChatEditbox.Flags = FLAG_SHADOW;
 	g_TeamChatEditbox.Visible = false;
 	g_TeamChatEditbox.FontName = "Veranda";
@@ -262,14 +265,15 @@ function plus()
 	// 192 how u doin kid
 	i++;
 	//StopFrontEndTrack();
-	PlayFrontEndSound( i );
+	PlayFrontEndTrack( i );
+	//PlayFrontEndSound( i );
 	Message( i.tostring());
 }
 function minus()
 {
 	i--;
 	//StopFrontEndTrack();
-	PlayFrontEndSound( i );
+	PlayFrontEndTrack( i );
 	Message( i.tostring());
 }
 
@@ -886,6 +890,7 @@ function onPlayerJoin( pPlayer )
 
 function onPlayerPart( pPlayer, iReasonID )
 {
+	if ( !SETTING_MUTE ) PlayFrontEndSound( 156 );
 	if ( !pPlayer.Immune ) Message( "* " + pPlayer.Name + " has left the game. (ID: " + pPlayer.ID + " | Reason: " + GetPartReasonFromID( iReasonID ) + " | Health: " + pPlayer.Health + ")", Colour( 255, 255, 0 ));
 	else Message( "* " + pPlayer.Name + " has left the game. (ID: " + pPlayer.ID + " | Reason: " + GetPartReasonFromID( iReasonID ) + ")", Colour( 255, 255, 0 ));
 	
@@ -980,24 +985,40 @@ function onClientRender()
 	return 1;
 }
 	
-function onClientCommand( cmd, text )
+function onClientCommand( szCommand, szText )
 {
-	/*if ( cmd == "track" ) PlayFrontEndTrack( text.tointeger() );
-	else if ( cmd == "snd" ) PlayFrontEndSound( text.tointeger() );
-	else if ( cmd == "shake" ) ShakeCamera( text.tointeger() );*/
-	if ( cmd == "fix" )
+	/*if ( szCommand == "track" ) PlayFrontEndTrack( szText.tointeger() );
+	else if ( szCommand == "snd" ) PlayFrontEndSound( szText.tointeger() );
+	else if ( szCommand == "shake" ) ShakeCamera( szText.tointeger() );*/
+	if ( szCommand == "fix" )
 	{
 		ShowMouseCursor( false );
 		RestoreCamera();
 		ToggleCameraMovement( true );
 	}
-	else if ( cmd == "fix2" )
+	else if ( szCommand == "fix2" )
 	{
 		ShowMouseCursor( true );
 		RestoreCamera();
 		ToggleCameraMovement( true );
 	}
-	
+	else if ( szCommand == "radio" )
+	{
+		if ( szText == "off" ) StopFrontEndTrack();
+		else
+		{
+			local iFM = szText.tointeger();
+			if (( iFM <= 8 ) && ( iFM >= 0 )) PlayFrontEndTrack( iFM );
+		}
+	}
+	else if ( szCommand == "mutesfx" )
+	{
+		SETTING_MUTE = true;
+	}
+	else if ( szCommand == "unmutesfx" )
+	{
+		SETTING_MUTE = false;
+	}
 	return 1;
 }
 
@@ -1026,7 +1047,7 @@ function EndSpawnScreenScene( pSpawn )
 	vPlayerPos = g_pLocalPlayer.Pos;
 	SetHUDEnabled( true );
 	ClearMessages();
-	StopFrontEndTrack();
+	//StopFrontEndTrack();
 	
 	if ( pSpawn.Team == 0 )
 	{
