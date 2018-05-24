@@ -1,5 +1,5 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC1 by Stoku					# */
+/* #			BaseMode v1.0-RC2 by Stoku					# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
@@ -10,7 +10,7 @@ local ADMIN_LOGIN_ATTEMPTS	= 3;		// login attempts before ban
 local PUNISHMENT_METHOD		= 0;		// type of punishment on key mismatch (0=kick, 1=ban)
 local LUID_AUTOLOGIN		= true;		// enable/disable LUID autologin
 
-local SCRIPT_VERSION			= "1.0-RC1";
+local SCRIPT_VERSION			= "1.0-RC2";
 local SCRIPT_AUTHOR				= "Stoku";
 
 g_Timer <- null;

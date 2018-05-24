@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-R1 by Stoku					# */
+/* #			BaseMode v1.0-RC2 by Stoku					# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-R1";
+local SCRIPT_VERSION			= "1.0-RC2";
 local SCRIPT_AUTHOR				= "Stoku";
 
 local SETTING_MUTE				= false;
