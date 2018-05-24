@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-beta by Stoku					# */
+/* #			BaseMode v1.0-R1 by Stoku					# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-beta";
+local SCRIPT_VERSION			= "1.0-R1";
 local SCRIPT_AUTHOR				= "Stoku";
 
 g_pLocalPlayer <- FindLocalPlayer();
