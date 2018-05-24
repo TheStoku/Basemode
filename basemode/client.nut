@@ -18,7 +18,7 @@ g_StatsPanel <- null;
 g_StatsPanelGradient <- null;
 g_Team1StatsLabel <- null;
 g_Team2StatsLabel <- null;
-g_SpawnScreenLabel <- null;
+//g_SpawnScreenLabel <- null;
 g_ScoreLabel <- null;
 g_TimeLabel <- null;
 g_SpeedoLabel <- null;
@@ -147,7 +147,7 @@ function onScriptLoad()
 	g_Team2StatsLabel.TextAlignment = ALIGN_MIDDLE_RIGHT;
 	g_StatsPanel.AddChild( g_Team2StatsLabel );
 	
-	g_SpawnScreenLabel = GUILabel( VectorScreen( 0, 0 ), ScreenSize( 100, 200 ), " " );
+	/*g_SpawnScreenLabel = GUILabel( VectorScreen( 0, 0 ), ScreenSize( 100, 200 ), " " );
 	g_SpawnScreenLabel.TextColour = Colour( 255, 255, 255 );
 	g_SpawnScreenLabel.Alpha = 255;
 	g_SpawnScreenLabel.Flags = FLAG_SHADOW;
@@ -156,7 +156,7 @@ function onScriptLoad()
 	g_SpawnScreenLabel.FontSize = 30;
 	g_SpawnScreenLabel.FontTags = TAG_BOLD;
 	g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
-	AddGUILayer( g_SpawnScreenLabel );
+	AddGUILayer( g_SpawnScreenLabel );*/
 	
 	g_CaptureWindow = GUIWindow( VectorScreen( ScreenWidth - 400, 200 ), ScreenSize( 300, 6 ), "Capturing" );
 	g_CaptureWindow.Colour = Colour( 0, 0, 0 );
@@ -1049,7 +1049,7 @@ function EndSpawnScreenScene( pSpawn )
 	ClearMessages();
 	//StopFrontEndTrack();
 	
-	if ( pSpawn.Team == 0 )
+	/*if ( pSpawn.Team == 0 )
 	{
 		g_SpawnScreenLabel.Text = "_";
 		g_SpawnScreenLabel.Pos = VectorScreen( 0, ScreenHeight - 90 );
@@ -1059,7 +1059,7 @@ function EndSpawnScreenScene( pSpawn )
 		g_SpawnScreenLabel.Text = "_";
 		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth - 30, ScreenHeight - 90 );
 
-	}
+	}*/
 }
 
 function UpdateSpawnScreenScene( pSpawn )
@@ -1069,7 +1069,7 @@ function UpdateSpawnScreenScene( pSpawn )
 	ShakeCamera( 200 );
 	PlayFrontEndSound( 94 );
 	
-	if ( pSpawn.Team == 0 )
+	/*if ( pSpawn.Team == 0 )
 	{
 		g_SpawnScreenLabel.Text = g_Team1StatsLabel.Text;
 		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth/2, ScreenHeight/2+200 );
@@ -1079,7 +1079,7 @@ function UpdateSpawnScreenScene( pSpawn )
 		g_SpawnScreenLabel.Text = g_Team2StatsLabel.Text;
 		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth/2, ScreenHeight/2+200 );
 
-	}
+	}*/
 	
 	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn.Team );
 }
