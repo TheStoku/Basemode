@@ -1,0 +1,11 @@
+<Name>House1</Name>
+<Author>rAiZeN</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>13</Weather>
+<Hour>0</Hour>
+ 
+<Spawns>
+    <player x="885.2" y="-303.6" z="9.3" angle="5.48884"/>
+    <marker x="880.6" y="-312.8" z="8.4"/>
+</Spawns>
