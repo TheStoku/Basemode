@@ -5,7 +5,7 @@
 
 local LOGIN_COMMAND			= "bmlogin"	// login command, leave it empty to disable this type of logging in
 local ADMIN_PASSWORD		= "pass";	// admin password, empty also disables logging in with command.
-local ADMIN_LEVEL			= 1;		// level to grant after /aplogin
+local ADMIN_LEVEL			= 1;		// level to grant after /bmlogin
 local ADMIN_LOGIN_ATTEMPTS	= 3;		// login attempts before ban
 local PUNISHMENT_METHOD		= 0;		// type of punishment on key mismatch (0=kick, 1=ban)
 local LUID_AUTOLOGIN		= true;		// enable/disable LUID autologin
@@ -237,9 +237,13 @@ function onM16PlayerKill( pKiller, pPlayer )
 	pPlayer.Health = 1;
 }
 
-function onPlayerRequestClass( pPlayer, pSpawn )
+function onPlayerRequestClass( pPlayer, iTeamID )
 {
-	if ( !pPlayer.Spawned ) pPlayer.SetAnim( 7 );
+	if ( !pPlayer.Spawned )
+	{
+		pPlayer.SetAnim( 7 );
+		SmallMessage( pPlayer, "~y~" + pPlayerManager.GetTeamPlayersCount( iTeamID ) + " Players", 5000, 1 );
+	}
 }
 
 function onPlayerEnteringVehicle( pPlayer, pVehicle, iDoor )
@@ -362,11 +366,19 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "t1name" )
 	{
-		if ( CheckModerator( pPlayer )) pPlayerManager.SetTeamName( 1, szText );
+		if ( CheckModerator( pPlayer ))
+		{
+			if ( szText.len() == 0 ) MessagePlayer( " [SYNTAX] /t1name <text>", pPlayer, Colour( 255, 0, 0 ));
+			else pPlayerManager.SetTeamName( 1, szText );
+		}
 	}
 	else if ( szCommand == "t2name" )
 	{
-		if ( CheckModerator( pPlayer )) pPlayerManager.SetTeamName( 2, szText );
+		if ( CheckModerator( pPlayer ))
+		{
+			if ( szText.len() == 0 ) MessagePlayer( " [SYNTAX] /t2name <text>", pPlayer, Colour( 255, 0, 0 ));
+			else pPlayerManager.SetTeamName( 2, szText );
+		}
 	}
 	else if ( szCommand == "resetscore" )
 	{
@@ -426,10 +438,13 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			pPlayerManager.Add( pAddedPlayer );
 		}
 	}
-	else if ( szCommand == "type" )
+	else if ( szCommand == "settype" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
-		g_iRoundStartType = szText.tointeger();
+		if ( szText == "auto" ) g_iRoundStartType = 0;
+		else if ( szText == "vote" ) g_iRoundStartType = 1;
+		else if ( szText == "manual" ) g_iRoundStartType = 2;
+		else g_iRoundStartType = szText.tointeger();
 	}
 	
 	else if ( szCommand == "player" )

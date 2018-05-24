@@ -227,10 +227,12 @@ function ToggleTeamChat()
 		BindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
 		g_TeamChatEditbox.Visible = true;
 		g_TeamChatEditbox.Active = true;
+		g_pLocalPlayer.Frozen = true;
 	}
 	else
 	{
 		// close
+		g_pLocalPlayer.Frozen = false;
 		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
 		BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
 		g_TeamChatEditbox.Visible = false;
@@ -1058,7 +1060,7 @@ function UpdateSpawnScreenScene( pSpawn )
 
 	}
 	
-	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn );
+	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn.Team );
 }
 
 // #################################################################

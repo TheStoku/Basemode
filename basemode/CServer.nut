@@ -329,6 +329,12 @@ class CPlayerManager
 		}
 		return 1;
 	}
+	function GetTeamPlayersCount( iTeamID )
+	{
+		if ( iTeamID == 0 ) return RedPlayers;
+		else if ( iTeamID == 1 ) return BluePlayers;
+		else return 0;
+	}
 	function CheckWinner()
 	{
 		if ( !pGame.IsRoundInProgress ) return 0;
