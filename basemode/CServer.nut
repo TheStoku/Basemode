@@ -14,7 +14,7 @@ local lobby_blue =  Vector( 165.74, -990.81, 29.53 );
 local lobby_blue_angle = 176.229;
 
 g_iDefendingTeam <- 0;
-g_iRoundStartType <- 1;		// 0-start random base, 1-vote, 2-admin controlled
+g_iRoundStartType <- 0;		// 0-start random base, 1-vote, 2-admin controlled
 
 class CSettings
 {

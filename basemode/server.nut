@@ -41,8 +41,8 @@ function Load()
 	RegisterRemoteFunc( "SendTeamMessage" );
 
 	// Load necessary files
-	dofile( "Scripts/basemode/CServer.nut" );
 	LoadModule( "lu_ini" );
+	dofile( "Scripts/basemode/CServer.nut" );
 	
 	// Configure game settings
 	EnableTrains( false );
@@ -139,10 +139,14 @@ function TimeProcess()
 			{
 				iRoundStartTime = 20;
 				//start random base
-				pGame.Start( rand() % ( 1 - 10 ));
+				pGame.Start( rand() % ( 1 - 18 ));
 			}
 		}
-		else SmallMessage( "                                                        ~l~Waiting for players...", 850, 0 );
+		else
+		{
+			SmallMessage( "                                                        ~l~Waiting for players...", 850, 0 );
+			iRoundStartTime = 20;
+		}
 	}
 }
 
