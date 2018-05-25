@@ -405,6 +405,38 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		//Message( pSettings.GetTeamColor( pKiller.Team ) + pKiller.Name + " [#ffffff] killed " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + " [#ffffff]with " + pSettings.GetWeaponNameFromID( iWeapon ));
 		
 	}
+	else if ( szCommand == "kick" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText ) {MessagePlayer("[#ff0000]Invalid Usage. /kick TargetID",pPlayer); return 0; }
+		local targetplr = FindPlayer( szText.tointeger() )
+		if ( !targetplr ) 
+		{
+			MessagePlayer ( "[#ff0000]Error: Player not found.", pPlayer );
+			return 0;
+		}
+		if ( targetplr )
+		{
+			KickPlayer ( targetplr );
+			Message("[#ff0000]Administrator "+pPlayer+" has kicked "+targetplr);
+		}
+	}
+	else if ( szCommand == "ban" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText ) { MessagePlayer("[#ff0000]Invalid Usage. /ban TargetID",pPlayer); return 0; }
+		local targetplr = FindPlayer( szText.tointeger() )
+		if ( !targetplr ) 
+		{
+			MessagePlayer ( "[#ff0000]Error: Player not found.", pPlayer );
+			return 0;
+		}
+		if ( targetplr )
+		{
+			BanPlayer ( targetplr , BANTYPE_LUID );
+			Message("[#ff0000]Administrator "+pPlayer+" has banned "+targetplr);
+		}
+	}
 	else if ( szCommand == "air" )
 	{
 		pPlayer.Pos = Vector( -1503.10, -977.10, 11.37 );
