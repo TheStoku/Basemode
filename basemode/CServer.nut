@@ -343,17 +343,20 @@ class CPlayerManager
 		{
 			pGame.End();
 			Message( "*** This round was a draw!" );
+			BigMessage( "This round was a draw!", 5000, 1 );
 		}
 		else if (( RedMembers == 0 ) || ( BlueMembers == 0 ))
 		{			
 			if ( RedMembers == 0 )
 			{
 				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
 				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			
@@ -364,11 +367,13 @@ class CPlayerManager
 			if ( g_iDefendingTeam == 1 )
 			{
 				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
 				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			
@@ -379,11 +384,13 @@ class CPlayerManager
 			if ( g_iDefendingTeam == 1 )
 			{
 				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			else
 			{
 				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			

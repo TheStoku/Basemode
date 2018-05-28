@@ -13,6 +13,8 @@ local LUID_AUTOLOGIN		= true;		// enable/disable LUID autologin
 local SCRIPT_VERSION			= "1.0-RC2";
 local SCRIPT_AUTHOR				= "Stoku";
 
+local NUMBER_OF_BASES			= 19;	// number of bases for autoplay system. Atm. 1-19.
+
 g_Timer <- null;
 g_CaptureTimer <- null;
 
@@ -139,7 +141,7 @@ function TimeProcess()
 			{
 				iRoundStartTime = 20;
 				//start random base
-				pGame.Start( rand() % ( 1 - 18 ));
+				pGame.Start( rand() % ( 1 - NUMBER_OF_BASES ));
 			}
 		}
 		else
@@ -344,6 +346,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "kill" )
 	{
+		Message( pPlayer.Name + " killed himself." );
 		pPlayer.Health = 0;
 	}
 	else if ( szCommand == "votebase" )
@@ -393,6 +396,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	else if ( szCommand == "kill" )
 	{
 		pPlayer.Health = 1;
+		Message( pPlayer.Name + " killed himself." );
 	}
 	else if ( szCommand == "anim" )
 	{
@@ -405,7 +409,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		//Message( pSettings.GetTeamColor( pKiller.Team ) + pKiller.Name + " [#ffffff] killed " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + " [#ffffff]with " + pSettings.GetWeaponNameFromID( iWeapon ));
 		
 	}
-	else if ( szCommand == "kick" )
+		else if ( szCommand == "kick" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
 		if ( !szText ) {MessagePlayer("[#ff0000]Invalid Usage. /kick TargetID",pPlayer); return 0; }
@@ -436,7 +440,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			BanPlayer ( targetplr , BANTYPE_LUID );
 			Message("[#ff0000]Administrator "+pPlayer+" has banned "+targetplr);
 		}
-	}
+}
 	else if ( szCommand == "air" )
 	{
 		pPlayer.Pos = Vector( -1503.10, -977.10, 11.37 );
@@ -491,6 +495,13 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	else if ( szCommand == "marker" )
 	{
 		print( "<marker x=\"" + pPlayer.Pos.x + "\" y=\"" + pPlayer.Pos.y + "\" z=\"" + pPlayer.Pos.z + "\"/>" );
+	}
+	else if ( szCommand == "vehicle" )
+	{
+	//<vehicle id="99" x="103.05" y="-947.0" z="26.16" angle="270.0" colour1="0" colour2="0"/>
+		//print( "<vehicle id=\"" + szText + " x=" + pPlayer.Vehicle.Pos.x + " y=" + pPlayer.Vehicle.Pos.y + " z=" + pPlayer.Vehicle.Pos.z + " angle=" + pPlayer.Vehicle.Angle + " colour1=0 colour2=0"
+		print( "<vehicle id=\"" + szText + "\"x=\"" + pPlayer.Vehicle.Pos.x + "\" y=\"" + pPlayer.Vehicle.Pos.y + "\" z=\"" + pPlayer.Vehicle.Pos.z + " angle=\"" + pPlayer.Vehicle.Angle + "\"" + " colour1=\"0" + "\"" + " colour2=\"0" + "\"" + "/>" );
+	//colour1=\"0\"
 	}
 	
 	else if ( szCommand == "cv" )
