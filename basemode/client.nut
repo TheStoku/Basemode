@@ -158,7 +158,7 @@ function onScriptLoad()
 	g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
 	AddGUILayer( g_SpawnScreenLabel );*/
 	
-	g_CaptureWindow = GUIWindow( VectorScreen( ScreenWidth - 400, 200 ), ScreenSize( 300, 6 ), "Capturing" );
+	g_CaptureWindow = GUIWindow( VectorScreen( ScreenWidth - 400, 300 ), ScreenSize( 300, 6 ), "Capturing" );
 	g_CaptureWindow.Colour = Colour( 0, 0, 0 );
 	g_CaptureWindow.Titlebar = false;
 	//g_CaptureWindow.Alpha = 50;
