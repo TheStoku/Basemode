@@ -517,7 +517,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "vehicle" )
 	{
-		print( "<vehicle id=\"" + szText + "\"x=\"" + pPlayer.Vehicle.Pos.x + "\" y=\"" + pPlayer.Vehicle.Pos.y + "\" z=\"" + pPlayer.Vehicle.Pos.z + " angle=\"" + pPlayer.Vehicle.Angle + "\"" + " colour1=\"0" + "\"" + " colour2=\"0" + "\"" + "/>" );
+		print( "<vehicle id=\"" + szText + "\"x=\"" + pPlayer.Vehicle.Pos.x + "\" y=\"" + pPlayer.Vehicle.Pos.y + "\" z=\"" + pPlayer.Vehicle.Pos.z + "\"" +" angle=\"" + pPlayer.Vehicle.Angle + "\"" + " colour1=\"0" + "\"" + " colour2=\"0" + "\"" + "/>" );
 	}
 	
 	else if ( szCommand == "cv" )
