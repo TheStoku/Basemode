@@ -348,10 +348,8 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	{
 		Message( pPlayer.Name + " killed himself." );
 		pPlayer.Health = 0;
-		pPlayerManager.Delete( pPlayer );
 		pPlayerManager.DeleteTeam( pPlayer );
 		pPlayerManager.CheckWinner();
-		pPlayerManager.CountPlayers();
 	}
 	else if ( szCommand == "eject" )
 	{
