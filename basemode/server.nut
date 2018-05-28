@@ -480,6 +480,21 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		{
 			pPlayerManager.SetTeam( pAddedPlayer );
 			pPlayerManager.Add( pAddedPlayer );
+			pAddedPlayer.Immune = false;
+			pAddedPlayer.Health = 100;
+			
+			CallClientFunc( pAddedPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID );
+			
+			if ( pAddedPlayer.Team == g_iDefendingTeam )
+			{
+				pAddedPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
+				pAddedPlayer.Angle = pBase.Spawn_Angle;
+			}
+			else
+			{
+				pAddedPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
+				pAddedPlayer.Angle = pSpawn.Spawn_Angle;
+			}
 		}
 	}
 	else if ( szCommand == "settype" )
