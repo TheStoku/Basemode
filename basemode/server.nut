@@ -401,11 +401,6 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		pPlayerManager.Team1Score = 0;
 		pPlayerManager.Team2Score = 0;
 	}
-	else if ( szCommand == "kill" )
-	{
-		pPlayer.Health = 1;
-		Message( pPlayer.Name + " killed himself." );
-	}
 	else if ( szCommand == "anim" )
 	{
 		if ( szText ) pPlayer.SetAnim( szText.tointeger() );
