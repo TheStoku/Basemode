@@ -349,6 +349,10 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		Message( pPlayer.Name + " killed himself." );
 		pPlayer.Health = 0;
 	}
+	else if ( szCommand == "eject" )
+	{
+		pPlayer.RemoveFromVehicle();
+	}
 	else if ( szCommand == "votebase" )
 	{
 		if ( g_iRoundStartType == 1 ) pVoteManager.VoteStart( pPlayer, szText );
