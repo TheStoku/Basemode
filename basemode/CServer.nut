@@ -1,5 +1,6 @@
 Players <- {};
 TeamMembers <- {};
+SpawnState <- {};
 
 g_Blip <- CreateBlip( BLIP_NONE, Vector( -1009.0, -164.0, 34.5 ));
 g_Blip.Colour = 2;
@@ -197,6 +198,8 @@ class CPlayerManager
 	BlueMembers = 0;
 	RedPlayers = 0;
 	BluePlayers = 0;
+	SpawnedRedPlayers = 0;
+	SpawnedBluePlayers = 0;
 	Team1Score = 0;
 	Team2Score = 0;
 	Team1Name = "RED";
@@ -344,6 +347,31 @@ class CPlayerManager
 	{
 		if ( iTeamID == 0 ) return RedPlayers;
 		else if ( iTeamID == 1 ) return BluePlayers;
+		else return 0;
+	}
+	function CountSpawnedPlayers()
+	{
+		SpawnedRedPlayers = 0;
+		SpawnedBluePlayers = 0;
+		
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+
+			if ( pPlayer )
+			{
+				if (( pPlayer.Team == 0 ) && ( pPlayer.Spawned )) SpawnedRedPlayers++;
+				else if (( pPlayer.Team == 1 ) && ( pPlayer.Spawned )) SpawnedBluePlayers++;
+			}
+		}
+		return 1;
+	}
+	function GetSpawnedPlayersCount( iTeamID )
+	{
+		pPlayerManager.CountSpawnedPlayers();
+		
+		if ( iTeamID == 0 ) return SpawnedRedPlayers;
+		else if ( iTeamID == 1 ) return SpawnedBluePlayers;
 		else return 0;
 	}
 	function CheckWinner()
@@ -581,7 +609,7 @@ class CGameLogic
 				{
 					local pPlayer = FindPlayer( iPlayerID );
 					
-					if (( pPlayer ) && ( pPlayer.Spawned ) && ( pPlayer.Team <= 1 ))
+					if (( pPlayer ) && ( pPlayer.Spawned ) && ( pPlayer.Team <= 1 ) && ( pPlayer.Health > 0 ))
 					{
 						pPlayerManager.SetTeam( pPlayer );
 						pPlayer.Immune = false;

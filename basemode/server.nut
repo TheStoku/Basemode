@@ -130,7 +130,12 @@ function TimeProcess()
 	}
 	else if ( g_iRoundStartType == 0 )
 	{
-		if (( pPlayerManager.RedPlayers > 0 ) && ( pPlayerManager.BluePlayers > 0 ))
+		if (( pPlayerManager.GetSpawnedPlayersCount( 0 ) == 0 ) || ( pPlayerManager.GetSpawnedPlayersCount( 1 ) == 0 ))
+		{
+			SmallMessage( "                                                        ~l~Waiting for players...", 850, 0 );
+			iRoundStartTime = 20;
+		}
+		else
 		{
 			if ( iRoundStartTime > 0 )
 			{
@@ -143,11 +148,6 @@ function TimeProcess()
 				//start random base
 				pGame.Start( rand() % ( 1 - NUMBER_OF_BASES ));
 			}
-		}
-		else
-		{
-			SmallMessage( "                                                        ~l~Waiting for players...", 850, 0 );
-			iRoundStartTime = 20;
 		}
 	}
 }
@@ -346,11 +346,15 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "kill" )
 	{
-		Message( pPlayer.Name + " killed himself." );
-		pPlayer.Health = 0;
-		pPlayerManager.DeleteTeam( pPlayer );
-		pPlayerManager.CountPlayers();
-		pPlayerManager.CheckWinner();
+		if (( iRoundStartTime < 3 ) && ( g_iRoundStartType == 0 )) MessagePlayer( "*** You can't use kill when it's less than 3 seconds before base start.", pPlayer );
+		else 
+		{
+			Message( pPlayer.Name + " killed himself." );
+			pPlayer.Health = 0;
+			pPlayerManager.DeleteTeam( pPlayer );
+			pPlayerManager.CountPlayers();
+			pPlayerManager.CheckWinner();
+		}
 	}
 	else if ( szCommand == "eject" )
 	{
