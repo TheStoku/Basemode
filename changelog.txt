@@ -1,0 +1,57 @@
+History:
+
+1.0-RC2:
+- finally fixed all bugs with autoplay
+- prevent from /kill usage when theres less than 3 seconds on autoplay
+- prevent starting base after /votebase when there are no enemies
+- fixed /add player admin command
+- added /eject command, to exit vehicle
+- added /vehicle id (incar) command to print (in console) coplete line for creating attackers spawnpoints.
+- added message for /kill command
+- new base (id 19) by rAiZeN
+- probably fixed autoplay feature (admin /settype <0/auto> or g_iRoundStartType = 0 in CServer.nut)
+- visual improvements, moved team chat above the radar
+- added "searching radio station" sound on player part (definable with SETTING_MUTE variable in client.nut or /mutesfx /unmutesfx command)
+- added /radio <0-8/off> client command
+
+1.0-RC1:
+- added information about team players count on spawnscreen
+- made player frozen when using teamchat (Y)
+- fixed /add command
+- changed /type command to /settype and added parameter auto/vote/manual
+- fixed known issues: /votebase, /bmlogin, errors caused by lu_ini module
+
+1.0-beta ()
+- first public beta test
+- colored and fixed some messagess (kill/part/join)
+
+1.0-alpha3 (21.09.2015):
+- added score label
+- improved UI
+- opened garages
+- added time and weather setting for bases
+- deleted deprecated stuff
+- added autostart system
+- added part/join/kill messages
+
+1.0-alpha2 (20.09.2015):
+second private test
+- balanced m16 weapon
+- fixed base 8 marker
+- increased weapons ammo
+- increased capture time (15secs from now)
+- added 7 bases
+
+1.0-alpha1 (19.09.2015):
+first real-private testing build with 2 players after recode
+
+pre 1.0-stage2 (20.09.2014):
+- improved map loader
+- recoded game logic
+- added 3 bases
+
+pre 1.0-stage1 (27.07.2010):
+- created basic map loader
+- created basic game logic
+- added 7 bases
+- added spawn point for attackers (calahan bridge)
