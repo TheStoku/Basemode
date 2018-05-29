@@ -141,7 +141,7 @@ function TimeProcess()
 			{
 				iRoundStartTime = 20;
 				//start random base
-				if (( pPlayerManager.GetTeamPlayersCount( 0 ) > 0 ) || ( pPlayerManager.GetTeamPlayersCount( 1 ) > 0 )) pGame.Start( rand() % ( 1 - NUMBER_OF_BASES ));
+				pGame.Start( rand() % ( 1 - NUMBER_OF_BASES ));
 			}
 		}
 		else
@@ -349,6 +349,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		Message( pPlayer.Name + " killed himself." );
 		pPlayer.Health = 0;
 		pPlayerManager.DeleteTeam( pPlayer );
+		pPlayerManager.CountPlayers();
 		pPlayerManager.CheckWinner();
 	}
 	else if ( szCommand == "eject" )

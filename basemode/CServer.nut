@@ -149,7 +149,18 @@ class CVoteManager
 		if ( Yes > No )
 		{
 			Message( "*** Voting finished! (Yes: " + Yes + "/No: " + No + ")" );
-			pGame.Start( Base );
+			if (( pPlayerManager.GetTeamPlayersCount( 0 ) == 0 ) || ( pPlayerManager.GetTeamPlayersCount( 1 ) == 0 ))
+			{
+				Message( "*** But not enough players :(" );
+				
+				foreach( iPlayerID in Players )
+				{
+					local pPlayer = FindPlayer( iPlayerID );
+
+					if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "EndVote" );
+				}
+			}
+			else pGame.Start( Base );
 		}
 		else
 		{
