@@ -2,3 +2,4 @@
 
 <script file="server.nut" client="0" />
 <script file="client.nut" client="1" />
+<sprite file="basemode.png" />

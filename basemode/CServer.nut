@@ -103,9 +103,9 @@ class CSettings
 	
 	function UpdateClientSettings( pPlayer )
 	{
-		CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", pPlayerManager.GetTeamFullName( 0 ), pPlayerManager.GetTeamFullName( 1 ));
-		CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score);
-		CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, GetMaxPlayers());
+		CLIENT_UpdateTeamNames( pPlayer );
+		CLIENT_UpdateScores( pPlayer );
+		CLIENT_UpdateSettings( pPlayer );
 	}
 }
 
@@ -119,8 +119,8 @@ class CVoteManager
 	
 	function VoteStart( pPlayer, iBaseID )
 	{
-		if ( IsVotingInProgress ) Message( "*** The previous vote isn't finished" );
-		else if ( !iBaseID ) Message( "[Syntax] Please specify base ID" );
+		if ( IsVotingInProgress ) Message( "[#00FF00]*** The previous vote isn't finished" );
+		else if ( !iBaseID ) Message( "[#ff0000][Syntax] [#ffffff]/votebase <id>" );
 		else
 		{
 			Message( "*** Vote started by " + pPlayer.Name + " for base " + iBaseID );
@@ -212,6 +212,39 @@ class CPlayerManager
 		pPlayer.Marker = false;
 		pSettings.UpdateClientSettings( pPlayer );
 	}
+	function AddToRound( pPlayer )
+	{
+		pPlayerManager.SetTeam( pPlayer );
+		pPlayerManager.Add( pPlayer );
+		pPlayer.Immune = false;
+		pPlayer.Health = 100;
+		
+		pSettings.UpdateClientSettings( pPlayer );
+		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID );
+			
+		if ( pPlayer.Team == g_iDefendingTeam )
+		{
+			pPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
+			pPlayer.Angle = pBase.Spawn_Angle;
+		}
+		else
+		{
+			pPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
+			pPlayer.Angle = pSpawn.Spawn_Angle;
+		}
+			
+		pPlayerManager.CountMembers();
+		
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+
+			if ( pPlayer )
+			{
+				CLIENT_UpdateTeamNames( pPlayer );				
+			}
+		}
+	}
 	function Login( pPlayer, iLevel )
 	{
 		if ( !pPlayer ) return 0;
@@ -244,13 +277,13 @@ class CPlayerManager
 	{
 		if ( iTeamID == 0 )
 		{
-			if ( g_iDefendingTeam == 0 ) return Team1Name + " (DEFENCE)";
-			else return Team1Name + " (ATTACK)";
+			if ( g_iDefendingTeam == 0 ) return "Defence | " + Team1Name;
+			else return "Attack | " + Team1Name;
 		}
 		else if ( iTeamID == 1 )
 		{
-			if ( g_iDefendingTeam == 1 ) return Team2Name + " (DEFENCE)";
-			else return Team2Name + " (ATTACK)";
+			if ( g_iDefendingTeam == 1 ) return "Defence | " + Team2Name;
+			else return "Attack | " + Team2Name;
 		}
 	}
 	function GetTeamName( iTeamID )
@@ -270,7 +303,7 @@ class CPlayerManager
 			{
 				local pPlayer = FindPlayer( iPlayerID );
 
-				if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", pPlayerManager.GetTeamFullName( 0 ), pPlayerManager.GetTeamFullName( 1 ));
+				if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );
 			}
 		}
 	}
@@ -306,7 +339,7 @@ class CPlayerManager
 		{
 			local pPlayer = FindPlayer( iPlayerID );
 
-			if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", pPlayerManager.GetTeamFullName( 0 ), pPlayerManager.GetTeamFullName( 1 ));
+			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );
 		}
 	}
 	function CountMembers()
@@ -349,6 +382,12 @@ class CPlayerManager
 		else if ( iTeamID == 1 ) return BluePlayers;
 		else return 0;
 	}
+	function GetTeamMembersCount( iTeamID )
+	{
+		if ( iTeamID == 0 ) return RedMembers;
+		else if ( iTeamID == 1 ) return BlueMembers;
+		else return 0;
+	}
 	function CountSpawnedPlayers()
 	{
 		SpawnedRedPlayers = 0;
@@ -381,20 +420,20 @@ class CPlayerManager
 		if (( RedMembers == 0 ) && ( BlueMembers == 0 ))
 		{
 			pGame.End();
-			Message( "*** This round was a draw!" );
+			Message( "[#00FF00]*** This round was a draw!" );
 			//BigMessage( "This round was a draw!", 5000, 1 );
 		}
 		else if (( RedMembers == 0 ) || ( BlueMembers == 0 ))
 		{			
 			if ( RedMembers == 0 )
 			{
-				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (killed all enemies)" );
 				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
-				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (killed all enemies)" );
 				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
@@ -405,13 +444,13 @@ class CPlayerManager
 		{
 			if ( g_iDefendingTeam == 1 )
 			{
-				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (timeout)" );
 				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
-				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (timeout)" );
 				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
@@ -422,13 +461,13 @@ class CPlayerManager
 		{			
 			if ( g_iDefendingTeam == 1 )
 			{
-				Message( "*** " + pPlayerManager.Team1Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (captured the base)" );
 				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			else
 			{
-				Message( "*** " + pPlayerManager.Team2Name + " team wins!" );
+				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (captured the base)" );
 				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
@@ -493,7 +532,7 @@ class CBase
 			}
 			else
 			{
-				Message( "[Error] Cannot load spawn data" );
+				Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
 				print( "[Error] Cannot load spawn data" );
 				
 				return 0;
@@ -501,7 +540,7 @@ class CBase
 		}
 		else
 		{
-			Message( "[Error] This base does not exist" );
+			Message( "[#ff0000][Error] [#ffffff]This base does not exist" );
 			print( "[Error] This base does not exist" );
 			
 			return 0;
@@ -564,7 +603,7 @@ class CSpawn
 			}
 			else
 			{
-				Message( "[Error] Cannot load spawn data" );
+				Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
 				print( "[Error] Cannot load spawn data" );
 				
 				return 0;
@@ -572,7 +611,7 @@ class CSpawn
 		}
 		else
 		{
-			Message( "[Error] Cannot load spawn data" );
+			Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
 			print( "[Error] Cannot load spawn data" );
 			
 			return 0;
@@ -631,19 +670,24 @@ class CGameLogic
 				}
 				
 				pPlayerManager.CountMembers();
-				/*if ( pPlayerManager.CountMembers() )
+				
+				foreach( iPlayerID in Players )
 				{
-					Message( pPlayerManager.Team1Name + " players: " + pPlayerManager.RedMembers.tostring( ));
-					Message( pPlayerManager.Team2Name + " players: " + pPlayerManager.BlueMembers.tostring( ));
-				}*/
-				return 1;
+					local pPlayer = FindPlayer( iPlayerID );
+
+					if ( pPlayer )
+					{
+						CLIENT_UpdateTeamNames( pPlayer );				
+					}
+				}
 			}
 			else return 0;
 		}
 	}
 	
 	function End()
-	{	
+	{
+		if ( !IsRoundInProgress ) return 0;
 		::SetServerRule( "Base", "Main Lobby" );
 		::SetServerRule( "Time left", "0:00" );
 		pPlayerManager.SwitchTeams();
@@ -698,4 +742,22 @@ class CGameLogic
 			if ( pVehicle )	pVehicle.Remove();
 		}
 	}
+}
+
+function CLIENT_UpdateScores( pPlayer )
+{
+	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
+}
+
+function CLIENT_UpdateTeamNames( pPlayer )
+{
+	local szTeam1 = pPlayerManager.GetTeamFullName( 0 ) + " | Members: " + pPlayerManager.GetTeamPlayersCount( 0 ) + " | Alive: " + pPlayerManager.GetTeamMembersCount( 0 );
+	local szTeam2 = pPlayerManager.GetTeamFullName( 1 ) + " | Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " | Alive: " + pPlayerManager.GetTeamMembersCount( 1 );
+	
+	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
+}
+
+function CLIENT_UpdateSettings( pPlayer )
+{
+	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, GetMaxPlayers() );
 }

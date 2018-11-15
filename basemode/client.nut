@@ -1,11 +1,12 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC2 by Stoku					# */
+/* #			BaseMode v1.0-RC3 by Stoku					# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC2";
+local SCRIPT_VERSION			= "1.0-RC3";
 local SCRIPT_AUTHOR				= "Stoku";
 
+local GUI_THEME_MAIN_COLOR 		= Colour( 0, 255, 0 );
 local SETTING_MUTE				= false;
 
 g_pLocalPlayer <- FindLocalPlayer();
@@ -14,6 +15,7 @@ g_Timer <- null;
 g_iGameState <- 0;		// 0-lobby, 1=base
 g_bSpectating <- false;
 
+g_Logo <- null;
 g_StatsPanel <- null;
 g_StatsPanelGradient <- null;
 g_Team1StatsLabel <- null;
@@ -77,8 +79,6 @@ function onScriptLoad()
 {
 	ConsoleMessage( "This server is using BaseMode v" + SCRIPT_VERSION + " by " + SCRIPT_AUTHOR + "." );
 	
-
-
 	//PlayFrontEndTrack( 191 );
 	
 	//BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
@@ -94,11 +94,13 @@ function onScriptLoad()
 	
 	SetHUDItemEnabled( HUD_MONEY, false );
 	SetHUDItemEnabled( HUD_WANTED, false );
-	
 	SetNametagDrawDistance( 30.0 );
 	
 	g_Timer = NewTimer( "TimeProcess", 1000, 0 );
 	g_Timer.Start();
+	
+	g_Logo = GUISprite( "basemode.png", VectorScreen( 5, ScreenHeight - 60 ));
+	AddGUILayer( g_Logo );
 	
 	g_StatsPanelGradient = GUIWindow( VectorScreen( 0, ScreenHeight - 15 ), ScreenSize( ScreenWidth, 15 ), "Statistics" );
 	g_StatsPanelGradient.Colour = Colour( 0, 0, 0 );
@@ -114,37 +116,37 @@ function onScriptLoad()
 	g_StatsPanel.Visible = true;
 	AddGUILayer( g_StatsPanel );
 	
-	g_ScoreLabel = GUILabel( VectorScreen( ScreenWidth/2-15, 13 ), ScreenSize( ScreenWidth, 25 ), "0:0" );
+	g_ScoreLabel = GUILabel( VectorScreen( ScreenWidth/2, 0 ), ScreenSize( ScreenWidth, 30 ), "0:0" );
 	g_ScoreLabel.TextColour = Colour( 255, 255, 255 );
-	g_ScoreLabel.Alpha = 90;
+	g_ScoreLabel.Alpha = 150;
 	g_ScoreLabel.Flags = FLAG_SHADOW;
 	g_ScoreLabel.Visible = true;
-	g_ScoreLabel.FontName = "Veranda";
-	g_ScoreLabel.FontSize = 16;
+	//g_ScoreLabel.FontName = "Veranda";
+	g_ScoreLabel.FontSize = 12;
 	g_ScoreLabel.FontTags = TAG_BOLD;
-	g_ScoreLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
+	g_ScoreLabel.TextAlignment = ALIGN_TOP_CENTER;
 	g_StatsPanel.AddChild( g_ScoreLabel );
 	
-	g_Team1StatsLabel = GUILabel( VectorScreen( 5, 11 ), ScreenSize( ScreenWidth, 25 ), "RED (ATTACK)" );
+	g_Team1StatsLabel = GUILabel( VectorScreen( 5, -2 ), ScreenSize( ScreenWidth, 25 ), "Red (Attack)" );
 	g_Team1StatsLabel.TextColour = Colour( 255, 0, 0 );
-	g_Team1StatsLabel.Alpha = 100;
+	g_Team1StatsLabel.Alpha = 150;
 	g_Team1StatsLabel.Flags = FLAG_SHADOW;
 	g_Team1StatsLabel.Visible = true;
-	g_Team1StatsLabel.FontName = "Veranda";
-	g_Team1StatsLabel.FontSize = 14;
-	//g_Team1StatsLabel.FontTags = TAG_BOLD;
-	g_Team1StatsLabel.TextAlignment = ALIGN_MIDDLE_LEFT;
+	//g_Team1StatsLabel.FontName = "Veranda";
+	g_Team1StatsLabel.FontSize = 12;
+	g_Team1StatsLabel.FontTags = TAG_BOLD;
+	g_Team1StatsLabel.TextAlignment = ALIGN_TOP_LEFT;
 	g_StatsPanel.AddChild( g_Team1StatsLabel );
 	
-	g_Team2StatsLabel = GUILabel( VectorScreen( ScreenWidth - 5, 11 ), ScreenSize( ScreenWidth, 25 ), "BLUE (DEFENCE)" );
+	g_Team2StatsLabel = GUILabel( VectorScreen( ScreenWidth - 5, -2 ), ScreenSize( ScreenWidth, 25 ), "Blue (Defence)" );
 	g_Team2StatsLabel.TextColour = Colour( 0, 0, 255 );
-	g_Team2StatsLabel.Alpha = 100;
+	g_Team2StatsLabel.Alpha = 150;
 	g_Team2StatsLabel.Flags = FLAG_SHADOW;
 	g_Team2StatsLabel.Visible = true;
-	g_Team2StatsLabel.FontName = "Veranda";
-	g_Team2StatsLabel.FontSize = 14;
-	//g_Team2StatsLabel.FontTags = TAG_BOLD;
-	g_Team2StatsLabel.TextAlignment = ALIGN_MIDDLE_RIGHT;
+	//g_Team2StatsLabel.FontName = "Veranda";
+	g_Team2StatsLabel.FontSize = 12;
+	g_Team2StatsLabel.FontTags = TAG_BOLD;
+	g_Team2StatsLabel.TextAlignment = ALIGN_TOP_RIGHT;
 	g_StatsPanel.AddChild( g_Team2StatsLabel );
 	
 	/*g_SpawnScreenLabel = GUILabel( VectorScreen( 0, 0 ), ScreenSize( 100, 200 ), " " );
@@ -183,31 +185,29 @@ function onScriptLoad()
 	g_HealthBar.Thickness = 0;		// this is a border size
 	g_StatsPanel.AddChild( g_HealthBar );
 	
-	g_TimeLabel = GUILabel( VectorScreen( ScreenWidth/2-15, 10 ), ScreenSize( 0, 0 ), "" );
-	g_TimeLabel.Colour = Colour( 255, 255, 255 );
-	//g_TimeLabel.FontTags = TAG_BOLD;
+	g_TimeLabel = GUILabel( VectorScreen( ScreenWidth/2, 0 ), ScreenSize( ScreenWidth, ScreenHeight ), "" );
 	g_TimeLabel.TextColour = Colour( 255, 255, 255 );
-	g_TimeLabel.Alpha = 100;
-	//g_TimeLabel.Flags = FLAG_SHADOW;
+	g_TimeLabel.Alpha = 200;
+	g_TimeLabel.Flags = FLAG_SHADOW;
+	g_TimeLabel.FontTags = TAG_BOLD;
+	g_TimeLabel.TextAlignment = ALIGN_TOP_CENTER;
+	g_TimeLabel.FontSize = 20;
 	g_TimeLabel.Visible = true;
-	g_TimeLabel.FontName = "Impact";
-	g_TimeLabel.FontSize = 16;
 	AddGUILayer( g_TimeLabel );
-	
-	g_SpeedoLabel = GUILabel( VectorScreen( 60, ScreenHeight - 60 ), ScreenSize( 0, 0 ), "" );
+		
+	g_SpeedoLabel = GUILabel( VectorScreen( ScreenWidth - 10, ScreenHeight - 60 ), ScreenSize( 0, 0 ), "" );
 	//g_SpeedoLabel.FontTags = TAG_BOLD;
-	g_SpeedoLabel.TextColour = Colour( 0, 0, 0 );
-	//g_SpeedoLabel.Colour = Colour( 255, 255, 255 );
+	g_SpeedoLabel.TextColour = Colour( 255, 255, 255 );
 	g_SpeedoLabel.Alpha = 250;
-	//g_SpeedoLabel.Flags = FLAG_SHADOW;
+	g_SpeedoLabel.Flags = FLAG_SHADOW;
+	g_SpeedoLabel.TextAlignment = ALIGN_TOP_RIGHT;
 	g_SpeedoLabel.Visible = true;
 	g_SpeedoLabel.FontName = "Impact";
 	g_SpeedoLabel.FontSize = 16;
 	AddGUILayer( g_SpeedoLabel );
 	
-	//g_TeamChatEditbox = GUIEditbox( VectorScreen( ScreenWidth-300, 0 ), ScreenSize( 300, 25 ));
 	g_TeamChatEditbox = GUIEditbox( VectorScreen( 5, ( ScreenHeight / 2 )), ScreenSize( 500, 25 ));
-	g_TeamChatEditbox.Colour = Colour( 0, 255, 0 );
+	g_TeamChatEditbox.Colour = GUI_THEME_MAIN_COLOR;
 	//g_TeamChatEditbox.FontTags = TAG_BOLD;
 	g_TeamChatEditbox.TextColour = Colour( 255, 255, 255 );
 	g_TeamChatEditbox.Alpha = 50;
@@ -356,7 +356,7 @@ function UpdateVotes( iBaseID, iVoteTime, iYes, iNo )
 
 function Primary_Button_1()
 {
-	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 255, 0 );
+	g_SelectPrimaryWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
@@ -372,7 +372,7 @@ function Primary_Button_1()
 function Primary_Button_2()
 {
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
-	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 255, 0 );
+	g_SelectPrimaryWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 	
@@ -388,7 +388,7 @@ function Primary_Button_3()
 {
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
-	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 255, 0 );
+	g_SelectPrimaryWeaponButton3.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 	
 	g_SelectPrimaryWeaponButton1.Alpha = 20;
@@ -404,7 +404,7 @@ function Primary_Button_4()
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
-	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 255, 0 );
+	g_SelectPrimaryWeaponButton4.Colour = GUI_THEME_MAIN_COLOR;
 	
 	g_SelectPrimaryWeaponButton1.Alpha = 20;
 	g_SelectPrimaryWeaponButton2.Alpha = 20;
@@ -416,7 +416,7 @@ function Primary_Button_4()
 
 function Secondary_Button_1()
 {
-	g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 255, 0 );
+	g_SelectSecondaryWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	
 	g_SelectSecondaryWeaponButton1.Alpha = 100;
@@ -428,7 +428,7 @@ function Secondary_Button_1()
 function Secondary_Button_2()
 {
 	g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 0, 0 );
-	g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 255, 0 );
+	g_SelectSecondaryWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	
 	g_SelectSecondaryWeaponButton1.Alpha = 20;
 	g_SelectSecondaryWeaponButton2.Alpha = 100;
@@ -438,7 +438,7 @@ function Secondary_Button_2()
 
 function Additional_Button_1()
 {
-	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 255, 0 );
+	g_SelectAdditionalWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
 	
 	g_SelectAdditionalWeaponButton1.Alpha = 100;
@@ -450,7 +450,7 @@ function Additional_Button_1()
 function Additional_Button_2()
 {
 	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
-	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 255, 0 );
+	g_SelectAdditionalWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	
 	g_SelectAdditionalWeaponButton1.Alpha = 20;
 	g_SelectAdditionalWeaponButton2.Alpha = 100;
@@ -481,44 +481,44 @@ function ShowWeaponsSelectMenu()
 	
 	if ( !g_SelectWeaponWindow )
 	{
-		g_SelectWeaponWindow = GUIWindow( VectorScreen( ScreenWidth/2-200, ScreenHeight/2-100 ), ScreenSize( 400, 150 ), "Please select your weapons:" );
+		g_SelectWeaponWindow = GUIWindow( VectorScreen( ScreenWidth/2-250, ScreenHeight/2-75 ), ScreenSize( 480, 150 ), "Please select your weapons:" );
 		g_SelectWeaponWindow.Colour = Colour( 0, 0, 0 );
 		g_SelectWeaponWindow.Titlebar = true;
 		g_SelectWeaponWindow.Alpha = 100;
 		g_SelectWeaponWindow.Visible = true;
 		AddGUILayer( g_SelectWeaponWindow );
 		
-		g_SelectWeaponLabel1 = GUILabel( VectorScreen( 30, 20 ), ScreenSize( 0, 0 ), "Primary Weapon" );
+		g_SelectWeaponLabel1 = GUILabel( VectorScreen( 20, 20 ), ScreenSize( 150, 10 ), "Primary Weapon" );
 		g_SelectWeaponLabel1.TextColour = Colour( 255, 255, 255 );
 		g_SelectWeaponLabel1.Alpha = 200;
 		g_SelectWeaponLabel1.Flags = FLAG_SHADOW;
 		g_SelectWeaponLabel1.Visible = true;
 		g_SelectWeaponLabel1.FontName = "Tahoma";
 		g_SelectWeaponLabel1.FontSize = 8;
-		//g_SelectWeaponLabel1.TextAlignment = ALIGN_MIDDLE_LEFT;
+		g_SelectWeaponLabel1.TextAlignment = ALIGN_TOP_LEFT;
 		g_SelectWeaponWindow.AddChild( g_SelectWeaponLabel1 );
 		
-		g_SelectWeaponLabel2 = GUILabel( VectorScreen( 150, 20 ), ScreenSize( 0, 0 ), "Secondary Weapon" );
+		g_SelectWeaponLabel2 = GUILabel( VectorScreen( 175, 20 ), ScreenSize( 150, 10 ), "Secondary Weapon" );
 		g_SelectWeaponLabel2.TextColour = Colour( 255, 255, 255 );
 		g_SelectWeaponLabel2.Alpha = 200;
 		g_SelectWeaponLabel2.Flags = FLAG_SHADOW;
 		g_SelectWeaponLabel2.Visible = true;
 		g_SelectWeaponLabel2.FontName = "Tahoma";
 		g_SelectWeaponLabel2.FontSize = 8;
-		//g_SelectWeaponLabel1.TextAlignment = ALIGN_MIDDLE_LEFT;
+		//g_SelectWeaponLabel2.TextAlignment = ALIGN_TOP_CENTER;
 		g_SelectWeaponWindow.AddChild( g_SelectWeaponLabel2 );
 		
-		g_SelectWeaponLabel3 = GUILabel( VectorScreen( 285, 20 ), ScreenSize( 0, 0 ), "Additional Weapon" );
+		g_SelectWeaponLabel3 = GUILabel( VectorScreen( 330, 20 ), ScreenSize( 150, 10 ), "Additional Weapon" );
 		g_SelectWeaponLabel3.TextColour = Colour( 255, 255, 255 );
 		g_SelectWeaponLabel3.Alpha = 200;
 		g_SelectWeaponLabel3.Flags = FLAG_SHADOW;
 		g_SelectWeaponLabel3.Visible = true;
 		g_SelectWeaponLabel3.FontName = "Tahoma";
 		g_SelectWeaponLabel3.FontSize = 8;
-		//g_SelectWeaponLabel1.TextAlignment = ALIGN_MIDDLE_LEFT;
+		//g_SelectWeaponLabel3.TextAlignment = ALIGN_MIDDLE_CENTER;
 		g_SelectWeaponWindow.AddChild( g_SelectWeaponLabel3 );
 		
-		g_SelectPrimaryWeaponButton1 = GUIButton( VectorScreen( 10, 40 ), ScreenSize( 120, 10 ), "AK-47 / " + pSettings.AKAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton1 = GUIButton( VectorScreen( 10, 40 ), ScreenSize( 150, 10 ), "AK-47 / " + pSettings.AKAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton1.Alpha = 20;
@@ -529,7 +529,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton1.SetCallbackFunc( Primary_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton1 );
 		
-		g_SelectPrimaryWeaponButton2 = GUIButton( VectorScreen( 10, 59 ), ScreenSize( 120, 10 ), "M16 / " + pSettings.M16Ammo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton2 = GUIButton( VectorScreen( 10, 59 ), ScreenSize( 150, 10 ), "M16 / " + pSettings.M16Ammo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton2.Alpha = 20;
@@ -540,7 +540,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton2.SetCallbackFunc( Primary_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton2 );
 		
-		g_SelectPrimaryWeaponButton3 = GUIButton( VectorScreen( 10, 78 ), ScreenSize( 120, 10 ), "Shotgun / " + pSettings.ShotgunAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton3 = GUIButton( VectorScreen( 10, 78 ), ScreenSize( 150, 10 ), "Shotgun / " + pSettings.ShotgunAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton3.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton3.Alpha = 20;
@@ -551,7 +551,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton3.SetCallbackFunc( Primary_Button_3 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton3 );
 		
-		g_SelectPrimaryWeaponButton4 = GUIButton( VectorScreen( 10, 97 ), ScreenSize( 120, 10 ), "Rifle / " + pSettings.RifleAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton4 = GUIButton( VectorScreen( 10, 97 ), ScreenSize( 150, 10 ), "Rifle / " + pSettings.RifleAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton4.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton4.Alpha = 20;
@@ -562,7 +562,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton4.SetCallbackFunc( Primary_Button_4 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton4 );
 		
-		g_SelectSecondaryWeaponButton1 = GUIButton( VectorScreen( 140, 40 ), ScreenSize( 120, 10 ), "Colt 45 / " + pSettings.ColtAmmo.tostring() + " ammo" );
+		g_SelectSecondaryWeaponButton1 = GUIButton( VectorScreen( 165, 40 ), ScreenSize( 150, 10 ), "Colt 45 / " + pSettings.ColtAmmo.tostring() + " ammo" );
 		g_SelectSecondaryWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectSecondaryWeaponButton1.Alpha = 20;
@@ -573,7 +573,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectSecondaryWeaponButton1.SetCallbackFunc( Secondary_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectSecondaryWeaponButton1 );	
 		
-		g_SelectSecondaryWeaponButton2 = GUIButton( VectorScreen( 140, 59 ), ScreenSize( 120, 10 ), "UZI / " + pSettings.UZIAmmo.tostring() + " ammo" );
+		g_SelectSecondaryWeaponButton2 = GUIButton( VectorScreen( 165, 59 ), ScreenSize( 150, 10 ), "UZI / " + pSettings.UZIAmmo.tostring() + " ammo" );
 		g_SelectSecondaryWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectSecondaryWeaponButton2.Alpha = 20;
@@ -584,7 +584,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectSecondaryWeaponButton2.SetCallbackFunc( Secondary_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectSecondaryWeaponButton2 );
 		
-		g_SelectAdditionalWeaponButton1 = GUIButton( VectorScreen( 270, 40 ), ScreenSize( 120, 10 ), "Grenade / " + pSettings.GrenadeAmmo.tostring() + " pcs." );
+		g_SelectAdditionalWeaponButton1 = GUIButton( VectorScreen( 320, 40 ), ScreenSize( 150, 10 ), "Grenade / " + pSettings.GrenadeAmmo.tostring() + " pcs." );
 		g_SelectAdditionalWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectAdditionalWeaponButton1.Alpha = 20;
@@ -595,7 +595,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectAdditionalWeaponButton1.SetCallbackFunc( Additional_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton1 );
 		
-		g_SelectAdditionalWeaponButton2 = GUIButton( VectorScreen( 270, 59 ), ScreenSize( 120, 10 ), "Molotov / " + pSettings.MolotovAmmo.tostring() + " pcs." );
+		g_SelectAdditionalWeaponButton2 = GUIButton( VectorScreen( 320, 59 ), ScreenSize( 150, 10 ), "Molotov / " + pSettings.MolotovAmmo.tostring() + " pcs." );
 		g_SelectAdditionalWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectAdditionalWeaponButton2.Alpha = 20;
@@ -606,7 +606,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectAdditionalWeaponButton2.SetCallbackFunc( Additional_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton2 );
 		
-		g_SelectOKButton = GUIButton( VectorScreen( 10, 125 ), ScreenSize( 380, 10 ), "OK" );
+		g_SelectOKButton = GUIButton( VectorScreen( 10, 125 ), ScreenSize( 460, 10 ), "OK" );
 		g_SelectOKButton.TextColour = Colour( 255, 255, 255 );
 		g_SelectOKButton.Colour = Colour( 0, 0, 0 );
 		g_SelectOKButton.Alpha = 20;
