@@ -1,5 +1,13 @@
 History:
 
+1.0-RC3:
+- merged features from BasemodeVC for team stats panel (team members, alive players etc)
+- added chat information about selected team on spawnscreen (also ported from bmVC)
+- added and refreshed many messages
+- some other tweaks, made code more similar with bmvc to make updates easier
+- added "config.nut" file and moved configurations there
+- updated some gui stuff like weapons selection menu scaling, added a nice logo by Xenon
+
 1.0-RC2:
 - finally fixed all bugs with autoplay
 - prevent from /kill usage when theres less than 3 seconds on autoplay
