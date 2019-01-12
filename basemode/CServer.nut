@@ -212,6 +212,7 @@ class CPlayerManager
 	function Add( pPlayer )
 	{
 		if ( !Players.rawin( pPlayer.Name ) ) Players.rawset( pPlayer.Name, pPlayer.ID );
+		pPlayer.Marker = false;
 	}
 	function AddToRound( pPlayer )
 	{
