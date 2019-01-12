@@ -15,11 +15,12 @@ local lobby_blue =  Vector( 165.74, -990.81, 29.53 );
 local lobby_blue_angle = 176.229;
 
 g_iDefendingTeam <- 0;
-g_iRoundStartType <- 0;		// 0-start random base, 1-vote, 2-admin controlled
 
 class CSettings
 {
 	VoteTime = 15;		// seconds
+	//CountdownTime = 5;
+	
 	ColtAmmo = 12*8;
 	UZIAmmo = 25*6;
 	ShotgunAmmo = 25;
@@ -28,8 +29,10 @@ class CSettings
 	RifleAmmo = 25;
 	MolotovAmmo = 2;
 	GrenadeAmmo = 2;
-	TEAM1_HEX_COLOR = "[#FF0000]";	// red
-	TEAM2_HEX_COLOR = "[#0000FF]";	// blue
+	
+	TEAM1_HEX_COLOR = "[#ff0000]";	// red
+	TEAM2_HEX_COLOR = "[#0000ff]";	// blue
+	SPECT_HEX_COLOR = "[#ffff00]";	// yellow
 	
 	function GetAmmoFromWeaponID( iWeaponID )
 	{
@@ -99,12 +102,13 @@ class CSettings
 	{
 		if ( iTeamID == 0 ) return TEAM1_HEX_COLOR;
 		else if ( iTeamID == 1 )  return TEAM2_HEX_COLOR;
+		else if ( iTeamID == 2 )  return SPECT_HEX_COLOR;
 	}
 	
 	function UpdateClientSettings( pPlayer )
 	{
 		CLIENT_UpdateTeamNames( pPlayer );
-		CLIENT_UpdateScores( pPlayer );
+		CLIENT_UpdateScores( pPlayer, false );
 		CLIENT_UpdateSettings( pPlayer );
 	}
 }
@@ -123,7 +127,7 @@ class CVoteManager
 		else if ( !iBaseID ) Message( "[#ff0000][Syntax] [#ffffff]/votebase <id>" );
 		else
 		{
-			Message( "*** Vote started by " + pPlayer.Name + " for base " + iBaseID );
+			Message( "[#00FF00]*** Vote started by " + pPlayer.Name + " base " + iBaseID );
 			
 			Yes = 0;
 			No = 0;
@@ -161,7 +165,7 @@ class CVoteManager
 					if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "EndVote" );
 				}
 			}
-			else pGame.Start( Base );
+			else pGame.Start( "base", Base );
 		}
 		else
 		{
@@ -208,29 +212,45 @@ class CPlayerManager
 	function Add( pPlayer )
 	{
 		if ( !Players.rawin( pPlayer.Name ) ) Players.rawset( pPlayer.Name, pPlayer.ID );
-		
-		pPlayer.Marker = false;
-		pSettings.UpdateClientSettings( pPlayer );
 	}
 	function AddToRound( pPlayer )
 	{
 		pPlayerManager.SetTeam( pPlayer );
 		pPlayerManager.Add( pPlayer );
+		
 		pPlayer.Immune = false;
+		//pPlayer.Marker = false;
 		pPlayer.Health = 100;
 		
 		pSettings.UpdateClientSettings( pPlayer );
+		
 		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID );
 			
-		if ( pPlayer.Team == g_iDefendingTeam )
+		if ( !pGame.IsArena )
 		{
-			pPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
-			pPlayer.Angle = pBase.Spawn_Angle;
+			if ( pPlayer.Team == g_iDefendingTeam )
+			{
+				pPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
+				pPlayer.Angle = pBase.Spawn_Angle;
+			}
+			else
+			{
+				pPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
+				pPlayer.Angle = pSpawn.Spawn_Angle;
+			}
 		}
 		else
 		{
-			pPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
-			pPlayer.Angle = pSpawn.Spawn_Angle;
+			if ( pPlayer.Team == g_iDefendingTeam )
+			{
+				pPlayer.Pos = Vector( pArena.Red_Spawn_X, pArena.Red_Spawn_Y, pArena.Red_Spawn_Z );
+				pPlayer.Angle = pArena.Red_Spawn_Angle;
+			}
+			else
+			{
+				pPlayer.Pos = Vector( pArena.Blue_Spawn_X, pArena.Blue_Spawn_Y, pArena.Blue_Spawn_Z );
+				pPlayer.Angle = pArena.Blue_Spawn_Angle;
+			}
 		}
 			
 		pPlayerManager.CountMembers();
@@ -243,6 +263,41 @@ class CPlayerManager
 			{
 				CLIENT_UpdateTeamNames( pPlayer );				
 			}
+		}
+	}
+	function DeleteFromRound( pPlayer )
+	{
+		if ( pPlayer )
+		{
+			if ( pPlayer.Spawned )
+			{
+				if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();			
+				pPlayer.ClearWeapons();
+				pPlayer.Immune = true;
+				pPlayer.Health = 100;
+				pPlayer.Frozen = false;
+				//pPlayer.RestoreCamera();
+				
+				if ( pPlayer.Team == 0 )
+				{
+					pPlayer.Pos = lobby_red;
+					pPlayer.Angle = lobby_red_angle;
+				}
+				else if ( pPlayer.Team == 1 )
+				{
+					pPlayer.Pos = lobby_blue;
+					pPlayer.Angle = lobby_blue_angle;
+				}
+				else
+				{
+					pPlayer.Pos = lobby_spectator;
+					pPlayer.Angle = lobby_spectator_angle;
+				}
+			
+				pPlayerManager.DeleteTeam( pPlayer );
+			}
+			
+			CallClientFunc( pPlayer, "basemode/client.nut", "onBaseEnd", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
 		}
 	}
 	function Login( pPlayer, iLevel )
@@ -285,6 +340,7 @@ class CPlayerManager
 			if ( g_iDefendingTeam == 1 ) return "Defence | " + Team2Name;
 			else return "Attack | " + Team2Name;
 		}
+		else return "Spectator";
 	}
 	function GetTeamName( iTeamID )
 	{
@@ -442,7 +498,8 @@ class CPlayerManager
 		}
 		else if ( pBase.RoundTime == 0 )
 		{
-			if ( g_iDefendingTeam == 1 )
+			if ( pGame.IsArena ) Message( "[#00FF00]*** This round was a draw! (timeout)" );
+			else if ( g_iDefendingTeam == 1 )
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (timeout)" );
 				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
@@ -488,63 +545,105 @@ class CBase
 	Weather = null;
 	Hour = null;
 	
-	Spawn_X = null;
-	Spawn_Y = null;
-	Spawn_Z = null;
-	Spawn_Angle = null;
+	Spawn_X = 0.0;
+	Spawn_Y = 0.0;
+	Spawn_Z = 0.0;
+	Spawn_Angle = 0.0;
 	
-	Marker_X = null;
-	Marker_Y = null;
-	Marker_Z = null;
+	Marker_X = 0.0;
+	Marker_Y = 0.0;
+	Marker_Z = 0.0;
 	
 	function LoadData( iBaseID )
 	{
-		local xmlBase = XmlDocument( "Scripts/basemode/maps/bases/" + iBaseID + ".xml" );
-		
-		if ( xmlBase.LoadFile() )
+		try
 		{
-			Name = xmlBase.FirstChild( "Name" ).Text;
-			Author = xmlBase.FirstChild( "Author" ).Text;
-			RoundTime = xmlBase.FirstChild( "RoundTime" ).Text.tointeger() * 60 + 6;
-			SpawnID = xmlBase.FirstChild( "Spawn" ).Text;
-			Weather = xmlBase.FirstChild( "Weather" ).Text;
-			Hour = xmlBase.FirstChild( "Hour" ).Text;
-			
-			::SetServerRule( "Base", Name );
-			
-			local rootSpawn = xmlBase.FirstChild( "Spawns" );
-			
-			if ( rootSpawn )
-			{
-				local node = rootSpawn.FirstChild( "player" );
-				
-				Spawn_X = node.GetAttribute( "x" ).tofloat();
-				Spawn_Y = node.GetAttribute( "y" ).tofloat();
-				Spawn_Z = node.GetAttribute( "z" ).tofloat();
-				Spawn_Angle = node.GetAttribute( "angle" ).tofloat();
-				
-				node = node.NextSibling( "marker" );
-				Marker_X = node.GetAttribute( "x" ).tofloat();
-				Marker_Y = node.GetAttribute( "y" ).tofloat();
-				Marker_Z = node.GetAttribute( "z" ).tofloat();
-				
-				return 1;
-			}
-			else
-			{
-				Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
-				print( "[Error] Cannot load spawn data" );
-				
-				return 0;
-			}
+			dofile( SCRIPT_DIR + "maps/bases/" + iBaseID + ".nut" );
 		}
-		else
+		catch( error )
 		{
-			Message( "[#ff0000][Error] [#ffffff]This base does not exist" );
-			print( "[Error] This base does not exist" );
-			
+			::Message( "[#ff0000][Error] [#ffffff]This base does not exist: " + iBaseID );
+			print( error );
 			return 0;
 		}
+
+		::pBaseData <- CBaseData();
+		
+		Name = ::pBaseData.Name;
+		Author = ::pBaseData.Author;
+		RoundTime = ::pBaseData.RoundTime * 60 + 6;
+		SpawnID = ::pBaseData.SpawnID;
+		Weather = ::pBaseData.Weather;
+		Hour = ::pBaseData.Hour;
+			
+		Spawn_X = ::pBaseData.Spawn.x;
+		Spawn_Y = ::pBaseData.Spawn.y;
+		Spawn_Z = ::pBaseData.Spawn.z;
+		Spawn_Angle = ::pBaseData.Spawn_Angle;
+		
+		Marker_X = ::pBaseData.Marker.x;
+		Marker_Y = ::pBaseData.Marker.y;
+		Marker_Z = ::pBaseData.Marker.z;
+		
+		::SetServerRule( "Base", Name );
+		
+		return 1;
+	}
+}
+
+class CArena
+{
+	Distance = 0.0;
+	Red_Spawn_X = 0.0;
+	Red_Spawn_Y = 0.0;
+	Red_Spawn_Z = 0.0;
+	Red_Spawn_Angle = 0.0;
+	
+	Blue_Spawn_X = 0.0;
+	Blue_Spawn_Y = 0.0;
+	Blue_Spawn_Z = 0.0;
+	Blue_Spawn_Angle = 0.0;
+	
+	function LoadData( iArenaID )
+	{	
+		try
+		{
+			dofile( SCRIPT_DIR + "maps/arenas/" + iArenaID + ".nut" );
+		}
+		catch( error )
+		{
+			::Message( "[#ff0000][Error] [#ffffff]This arena does not exist: " + iArenaID );
+			print( error );
+			return 0;
+		}
+
+		::pArenaData <- CArenaData();
+		
+		pBase.Name = ::pArenaData.Name;
+		pBase.Author = ::pArenaData.Author;
+		pBase.RoundTime = ::pArenaData.RoundTime * 60 + 6;
+		pBase.Weather = ::pArenaData.Weather;
+		pBase.Hour = ::pArenaData.Hour;
+		Distance = ::pArenaData.Distance;
+			
+		Red_Spawn_X = ::pArenaData.RedSpawn.x;
+		Red_Spawn_Y = ::pArenaData.RedSpawn.y;
+		Red_Spawn_Z = ::pArenaData.RedSpawn.z;
+		Red_Spawn_Angle = ::pArenaData.RedSpawn_Angle;
+		
+		Blue_Spawn_X = ::pArenaData.BlueSpawn.x;
+		Blue_Spawn_Y = ::pArenaData.BlueSpawn.y;
+		Blue_Spawn_Z = ::pArenaData.BlueSpawn.z;
+		Blue_Spawn_Angle = ::pArenaData.BlueSpawn_Angle;
+		
+		pBase.Marker_X = ::pArenaData.Marker.x;
+		pBase.Marker_Y = ::pArenaData.Marker.y;
+		pBase.Marker_Z = ::pArenaData.Marker.z;
+		
+		if ( GAMEMODE_NAME_INFO ) ::SetGameModeName ( "[Arena: " + pBase.Name + "] " + GAMEMODE_NAME );
+		//::SetWorldBounds( Bound_Max_X, Bound_Min_X, Bound_Max_Y, Bound_Min_Y );
+		
+		return 1;
 	}
 }
 
@@ -553,68 +652,52 @@ class CSpawn
 	Name = null;
 	Author = null;
 	
-	Spawn_X = null;
-	Spawn_Y = null;
-	Spawn_Z = null;
-	Spawn_Angle = null;
+	Spawn_X = 0.0;
+	Spawn_Y = 0.0;
+	Spawn_Z = 0.0;
+	Spawn_Angle = 0.0;
 	
 	function LoadData()
 	{
-		local xmlSpawn = XmlDocument( "Scripts/basemode/maps/spawns/" + pBase.SpawnID + ".xml" );
-		
-		if ( xmlSpawn.LoadFile() )
+		try
 		{
-			Name = xmlSpawn.FirstChild( "Name" ).Text;
-			Author = xmlSpawn.FirstChild( "Author" ).Text;
-						
-			local rootSpawn = xmlSpawn.FirstChild( "Spawns" );
-			
-			if ( rootSpawn )
-			{
-				local node = rootSpawn.FirstChild( "player" );
-				
-				Spawn_X = node.GetAttribute( "x" ).tofloat();
-				Spawn_Y = node.GetAttribute( "y" ).tofloat();
-				Spawn_Z = node.GetAttribute( "z" ).tofloat();
-				Spawn_Angle = node.GetAttribute( "angle" ).tofloat();
-				
-				node = node.NextSibling( "vehicle" );
-				
-				do
-				{	
-					local pVehicle, iModelID, fX, fY, fZ, fAngle, iColor1, iColor2;
-					
-					iModelID = node.GetAttribute( "id" ).tointeger();
-					fX = node.GetAttribute( "x" ).tofloat();
-					fY = node.GetAttribute( "y" ).tofloat();
-					fZ = node.GetAttribute( "z" ).tofloat();
-					fAngle = node.GetAttribute( "angle" ).tofloat();
-					iColor1 =  node.GetAttribute( "colour1" ).tointeger();
-					iColor2 =  node.GetAttribute( "colour2" ).tointeger();
-					node = node.NextSibling( "vehicle" );
-					
-					pVehicle = CreateVehicle( iModelID, Vector( fX, fY, fZ ), fAngle, iColor1, iColor2 );
-					pVehicle.RespawnTime = pBase.RoundTime;
-					pVehicle.IdleRespawnTime = pBase.RoundTime;
-					pVehicle.OneTime = false;
-				} while( node )
-				
-				return 1;
-			}
-			else
-			{
-				Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
-				print( "[Error] Cannot load spawn data" );
-				
-				return 0;
-			}
+			dofile( SCRIPT_DIR + "maps/spawns/" + pBase.SpawnID + ".nut" );
 		}
-		else
+		catch( error )
 		{
-			Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
-			print( "[Error] Cannot load spawn data" );
-			
+			::Message( "[#ff0000][Error] [#ffffff]Cannot load spawn data" );
+			print( error );
 			return 0;
+		}
+
+		::pSpawnData <- CSpawnData();
+		
+		Name = pSpawnData.Name;
+		Author = pSpawnData.Author;
+			
+		Spawn_X = pSpawnData.Spawn.x;
+		Spawn_Y = pSpawnData.Spawn.y;
+		Spawn_Z = pSpawnData.Spawn.z;
+		Spawn_Angle = pSpawnData.Spawn_Angle;
+		
+		//pSpawnData.CreateVehicles()
+		if ( pSpawnData.CreateVehicles() ) pSpawn.PrepareVehicles();
+		
+		return 1;
+	}
+	function PrepareVehicles()
+	{
+		local iVehicleCount = GetVehicleCount();
+		
+		for( local iVehicleID = 0; iVehicleID < iVehicleCount; iVehicleID++ )
+		{
+			local pVehicle = ::FindVehicle( iVehicleID );	
+			if ( pVehicle )
+			{
+				pVehicle.RespawnTime = pBase.RoundTime;
+				pVehicle.IdleRespawnTime = pBase.RoundTime;
+				pVehicle.OneTime = false;
+			}
 		}
 	}
 }
@@ -624,61 +707,68 @@ class CGameLogic
 	CaptureTime = 0;
 	Taker = null;
 	IsRoundInProgress = false;
+	IsArena = false;
 	
-	function Start( iBaseID )
+	function Start( szType, iBaseID )
 	{
 		if ( IsRoundInProgress ) Message( "*** The round is in progress" );
 		else
 		{
 			CleanMap();
 		
-			if (( pBase.LoadData( iBaseID ) ) && ( pSpawn.LoadData( )))
+			if ( szType == "base" )
 			{
-				Message( "*** Starting base " + pBase.Name + " - " + ::GetDistrictName( pBase.Marker_X, pBase.Marker_Y ) + " (ID: " + iBaseID + ")" );
-								
-				IsRoundInProgress = true;
-				g_Timer.Start();
-				
-				g_Blip.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
-				g_Marker.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
-				SetWeather( pBase.Weather.tointeger() );
-				SetTime( pBase.Hour.tointeger(), 00 );
-				
-				foreach( iPlayerID in Players )
+				if (( pBase.LoadData( iBaseID ) ) && ( pSpawn.LoadData( )))
 				{
-					local pPlayer = FindPlayer( iPlayerID );
+					Message( "[#00FF00]*** Starting base " + pBase.Name + " - " + ::GetDistrictName( pBase.Marker_X, pBase.Marker_Y ) + " (ID: " + iBaseID + ")" );
+									
+					IsRoundInProgress = true;
+					IsArena = false;
+					//pSettings.CountdownTime = 5;
+					g_Timer.Start();
 					
-					if (( pPlayer ) && ( pPlayer.Spawned ) && ( pPlayer.Team <= 1 ) && ( pPlayer.Health > 0 ))
+					g_Blip.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
+					g_Marker.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
+					SetWeather( pBase.Weather.tointeger() );
+					SetTime( pBase.Hour.tointeger(), 00 );
+					//SetTimeRate( 0 );
+					
+					foreach( iPlayerID in Players )
 					{
-						pPlayerManager.SetTeam( pPlayer );
-						pPlayer.Immune = false;
-						pPlayer.Health = 100;
+						local pPlayer = FindPlayer( iPlayerID );
 						
-						CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID );
-						
-						if ( pPlayer.Team == g_iDefendingTeam )
-						{
-							pPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
-							pPlayer.Angle = pBase.Spawn_Angle;
-						}
-						else
-						{
-							pPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
-							pPlayer.Angle = pSpawn.Spawn_Angle;
-						}
+						if (( pPlayer ) && ( pPlayer.Spawned ) && ( pPlayer.Team <= 1 )) pPlayerManager.AddToRound( pPlayer );
 					}
+					return 1;
 				}
-				
-				pPlayerManager.CountMembers();
-				
-				foreach( iPlayerID in Players )
+			}
+			else if ( szType == "arena" )
+			{
+				if ( pArena.LoadData( iBaseID )) 
 				{
-					local pPlayer = FindPlayer( iPlayerID );
-
-					if ( pPlayer )
+					Message( "[#00FF00]*** Starting arena " + pBase.Name + " - " + ::GetDistrictName( pBase.Marker_X, pBase.Marker_Y ) + " (ID: " + iBaseID + ")" );
+					
+					IsRoundInProgress = true;
+					IsArena = true;
+					//pSettings.CountdownTime = 5;
+					g_Timer.Start();
+					
+					g_Blip.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
+					g_Marker.Pos = Vector( pBase.Marker_X, pBase.Marker_Y, pBase.Marker_Z );
+					
+					SetWeather( pBase.Weather.tointeger() );
+					SetTime( pBase.Hour.tointeger(), 00 );
+					
+					foreach( iPlayerID in Players )
 					{
-						CLIENT_UpdateTeamNames( pPlayer );				
+						local pPlayer = FindPlayer( iPlayerID );
+						
+						if (( pPlayer ) && ( pPlayer.Spawned ) && ( pPlayer.Team <= 1 ))
+						{
+							pPlayerManager.AddToRound( pPlayer );
+						}
 					}
+					return 1;
 				}
 			}
 			else return 0;
@@ -692,45 +782,24 @@ class CGameLogic
 		::SetServerRule( "Time left", "0:00" );
 		pPlayerManager.SwitchTeams();
 		IsRoundInProgress = false;
+		IsArena = false;
 		Taker = null;
 		CaptureTime = 0;
 		iRoundStartTime = 20;
 		
-		if ( g_iRoundStartType != 0 ) g_Timer.Stop();
+		if ( ROUNDSTART_TYPE != 0 ) g_Timer.Stop();
 		g_CaptureTimer.Stop();
 		
 		foreach( iPlayerID in Players )
 		{
 			local pPlayer = FindPlayer( iPlayerID );
-			
-			if ( pPlayer )
-			{
-				if ( pPlayer.Spawned )
-				{
-					if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();
-					if ( pPlayer.Team == 0 )
-					{
-						pPlayer.Pos = lobby_red;
-						pPlayer.Angle = lobby_red_angle;
-					}
-					else if ( pPlayer.Team == 1 )
-					{
-						pPlayer.Pos = lobby_blue;
-						pPlayer.Angle = lobby_blue_angle;
-					}
-					
-					pPlayer.ClearWeapons();
-					pPlayer.Immune = true;
-					pPlayer.Health = 100;
-					pPlayerManager.DeleteTeam( pPlayer );
-				}
-				CallClientFunc( pPlayer, "basemode/client.nut", "onBaseEnd", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
-			}
+			pPlayerManager.DeleteFromRound( pPlayer );
 		}
+		
+		CleanMap();
 		
 		return 1;
 	}
-	
 	function CleanMap()
 	{
 		local iVehicleCount = GetVehicleCount();
@@ -738,15 +807,23 @@ class CGameLogic
 		for( local iVehicleID = 0; iVehicleID < iVehicleCount; iVehicleID++ )
 		{
 			local pVehicle = ::FindVehicle( iVehicleID );	
-			
 			if ( pVehicle )	pVehicle.Remove();
 		}
 	}
 }
 
-function CLIENT_UpdateScores( pPlayer )
+function CLIENT_UpdateScores( pPlayer, bAll )
 {
-	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
+	if ( bAll )
+	{
+		foreach( iPlayerID in Players )
+		{
+			pPlayer = FindPlayer( iPlayerID );
+
+			if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
+		}
+	}
+	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
 }
 
 function CLIENT_UpdateTeamNames( pPlayer )
@@ -755,6 +832,11 @@ function CLIENT_UpdateTeamNames( pPlayer )
 	local szTeam2 = pPlayerManager.GetTeamFullName( 1 ) + " | Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " | Alive: " + pPlayerManager.GetTeamMembersCount( 1 );
 	
 	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
+}
+
+function CLIENT_UpdateSpawnSelection( pPlayer, szName )
+{
+	CallClientFunc( pPlayer, "basemode/client.nut", "SetSpawnClass", szName );
 }
 
 function CLIENT_UpdateSettings( pPlayer )

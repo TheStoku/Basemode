@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC3 by Stoku						# */
+/* #			BaseMode v1.0-RC4 by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC3";
+local SCRIPT_VERSION			= "1.0-RC4";
 local SCRIPT_AUTHOR				= "Stoku";
 
 SCRIPT_DIR						<- "Scripts/basemode/";
@@ -37,20 +37,8 @@ function Load()
 
 	// Load necessary files
 	LoadModule( "lu_ini" );
-	dofile( SCRIPT_DIR + "config.nut" );
 	dofile( SCRIPT_DIR + "CServer.nut" );
-	
-	// Configure game settings
-	EnableTrains( false );
-	SetSSVBridgeLock( true );
-	CloseSSVBridge( );
-	SetWeatherLock( true );
-	SetFriendlyFire( true );
-	
-	for( local iGarageID = 1; iGarageID <= 26; iGarageID++ )
-	{
-		OpenGarage( iGarageID );
-	}
+	dofile( SCRIPT_DIR + "config.nut" );
 	
 	// Configure server settings
 	SetGamemodeName( "BaseMode (AAD)" );
@@ -62,21 +50,24 @@ function Load()
 	pSettings <- CSettings();
 	pPlayerManager <- CPlayerManager();
 	pBase <- CBase();
+	pArena <- CArena();
 	pSpawn <- CSpawn();
 	pGame <- CGameLogic();
 	pVoteManager <- CVoteManager();
 	g_iDefendingTeam = 0;
-	iRoundStartTime <- 20;
+	iRoundStartTime <- AUTOPLAY_AWAIT_TIME;
 	loginAttempts <- {};
 	adminList <- {};
 	
 	g_Timer = NewTimer( "TimeProcess", 1000, 0 );
-	if ( g_iRoundStartType != 0 ) g_Timer.Stop();
+	if ( ROUNDSTART_TYPE != 0 ) g_Timer.Stop();
 	
 	g_CaptureTimer = NewTimer( "CaptureTimeProcess", 1000, 0 );
 	g_CaptureTimer.Stop();
 	
 	print( "Script has been loaded successfully!" );
+	
+	return 1;
 }
 
 function GiveWeapons( pPlayer, iPrimaryWeapon, iSecondaryWeapon, iAdditionalWeapon )
@@ -122,7 +113,7 @@ function TimeProcess()
 		}
 		else pVoteManager.VoteEnd();
 	}
-	else if ( g_iRoundStartType == 0 )
+	else if ( ROUNDSTART_TYPE == 0 )
 	{
 		if (( pPlayerManager.GetSpawnedPlayersCount( 0 ) == 0 ) || ( pPlayerManager.GetSpawnedPlayersCount( 1 ) == 0 ))
 		{
@@ -138,9 +129,16 @@ function TimeProcess()
 			}
 			else
 			{
-				iRoundStartTime = 20;
+				iRoundStartTime = AUTOPLAY_AWAIT_TIME;
+				
 				//start random base
-				pGame.Start( rand() % ( 1 - NUMBER_OF_BASES ));
+				local MAP_COUNT;
+				if ( AUTOPLAY_TYPE == "base" ) MAP_COUNT = NUMBER_OF_BASES;
+				else if ( AUTOPLAY_TYPE == "arena" ) MAP_COUNT = NUMBER_OF_ARENAS;
+				
+				local iRand = rand() % ( 1 - MAP_COUNT );
+				if ( iRand == 0 ) iRand++;	// hotfix :P
+				pGame.Start( AUTOPLAY_TYPE, iRand );
 			}
 		}
 	}
@@ -176,10 +174,12 @@ function onPlayerJoin( pPlayer )
 	}
 
 	MessagePlayer( "[#FFFF00]*** Basemode v" + SCRIPT_VERSION + " is running ***", pPlayer );
-	if ( g_iRoundStartType == 0 ) MessagePlayer( "[#FFFF00]The server is script controlled. The base will start automatically.", pPlayer );
-	else if ( g_iRoundStartType == 1 ) MessagePlayer( "[#FFFF00]The server is vote controlled. Use [#00FF00]/votebase [#FFFF00]to start voting!", pPlayer );
-	else if ( g_iRoundStartType == 2 ) MessagePlayer( "[#FFFF00]The server is admin controlled. Bases are started by admin.", pPlayer );
+	if ( ROUNDSTART_TYPE == 0 ) MessagePlayer( "[#FFFF00]The server is script controlled. The base will start automatically.", pPlayer );
+	else if ( ROUNDSTART_TYPE == 1 ) MessagePlayer( "[#FFFF00]The server is vote controlled. Use [#00FF00]/votebase [#FFFF00]to start voting!", pPlayer );
+	else if ( ROUNDSTART_TYPE == 2 ) MessagePlayer( "[#FFFF00]The server is admin controlled. Bases are started by admin.", pPlayer );
 	MessagePlayer( "[#FFFF00]If you need more info, use [#00FF00]/help", pPlayer );
+	
+	pSettings.UpdateClientSettings( pPlayer );
 	
 	return 1;
 }
@@ -196,28 +196,38 @@ function onPlayerPart( pPlayer, iReasonID )
 	return 0;
 }
 
+function onPlayerRequestClass( pPlayer, iTeamID )
+{
+	if ( !pPlayer.Spawned )
+	{
+		pPlayer.SetAnim( 7 );
+		MessagePlayer( "[#ffffff]Current select: " + pSettings.GetTeamColor( iTeamID ) + pPlayerManager.GetTeamFullName( iTeamID ) + " [#ffff00]| Members: " + pPlayerManager.GetTeamPlayersCount( iTeamID ), pPlayer );
+		CLIENT_UpdateSpawnSelection( pPlayer, pSettings.GetTeamColor( iTeamID ) + pPlayerManager.GetTeamName( iTeamID ));
+		CLIENT_UpdateTeamNames( pPlayer );
+		CLIENT_UpdateScores( pPlayer, false );
+	}
+}
+
 function onPlayerSpawn( pPlayer, pSpawn )
 {
 	pPlayer.Immune = true;
 	pPlayerManager.CountPlayers();
+	CLIENT_UpdateSpawnSelection( pPlayer, "" );
 	
 	foreach( iPlayerID in Players )
 	{
 		local pPlayer = FindPlayer( iPlayerID );
 
-		if ( pPlayer )
-		{
-			CLIENT_UpdateTeamNames( pPlayer );				
-		}
+		if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
 	}
 	
 	if ( pPlayer.Team == 0 )
 	{
-		Message( "[#FF0000]" + pPlayer.Name + "[#FFFFFF] has joined the [#FF0000]" + pPlayerManager.Team1Name + "[#FFFFFF] team! [#FFFFFF]| [#FFFF00]Members: " + pPlayerManager.GetTeamPlayersCount( 0 ) + " Wins: " + pPlayerManager.Team1Score + " Loses: " + pPlayerManager.Team2Score );
+		Message( "[#ffffff]*** [#ff0000]" + pPlayer.Name + "[#ffffff] has joined the [#ff0000]" + pPlayerManager.Team1Name + "[#ffffff] team! [#ffffff][#ffff00][Members: " + pPlayerManager.GetTeamPlayersCount( 0 ) + " | Wins: " + pPlayerManager.Team1Score + " | Loses: " + pPlayerManager.Team2Score + "]" );
 	}
 	else if ( pPlayer.Team == 1 )
 	{
-		Message( "[#0000FF]" + pPlayer.Name + "[#FFFFFF] has joined the [#0000FF]" + pPlayerManager.Team2Name + "[#FFFFFF] team! [#FFFFFF]| [#FFFF00]Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " Wins: " + pPlayerManager.Team2Score + " Loses: " + pPlayerManager.Team1Score );
+		Message( "[#ffffff]*** [#0000ff]" + pPlayer.Name + "[#ffffff] has joined the [#0000ff]" + pPlayerManager.Team2Name + "[#ffffff] team! [#ffffff][#ffff00][Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " | Wins: " + pPlayerManager.Team2Score + " | Loses: " + pPlayerManager.Team1Score + "]" );
 	}
 	
 	return 1;
@@ -258,7 +268,8 @@ function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 
 		if ( pPlayer )
 		{
-			CLIENT_UpdateTeamNames( pPlayer );				
+			CLIENT_UpdateTeamNames( pPlayer );
+			CLIENT_UpdateCaptureTime( pPlayer );			
 		}
 	}
 }
@@ -273,23 +284,15 @@ function onM16PlayerKill( pKiller, pPlayer )
 	pPlayer.Health = 1;
 }
 
-function onPlayerRequestClass( pPlayer, iTeamID )
-{
-	if ( !pPlayer.Spawned )
-	{
-		pPlayer.SetAnim( 7 );
-		MessagePlayer( "[#FFFFFF]Current select: " + pSettings.GetTeamColor( iTeamID ) + pPlayerManager.GetTeamFullName( iTeamID ) + " [#FFFF00]| Members: " + pPlayerManager.GetTeamPlayersCount( iTeamID ), pPlayer );
-	}
-}
-
 function onPlayerEnteringVehicle( pPlayer, pVehicle, iDoor )
 {
-	if ( pPlayer.Team == g_iDefendingTeam ) return 0;
+	if ( pPlayer.Team == g_iDefendingTeam && !pGame.IsArena ) return 0;
 	else return 1;
 }
 
 function onPlayerEnterSphere( pPlayer, pSphere )
 {
+	if ( pGame.IsArena ) return 0;
 	if ( pPlayer.Team != g_iDefendingTeam )
 	{
 		pGame.Taker = pPlayer.Name;
@@ -317,13 +320,13 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	{
 		if ( pPlayerManager.IsLoggedIn( pPlayer ))
 		{
-			MessagePlayer( "[#00FF00][Basemode] [#FFFFFF]You are already logged in.", pPlayer );
+			MessagePlayer( "[#00ff00][Basemode] [#ffffff]You are already logged in.", pPlayer );
 			return 1;
 		}
 		
 		if ( szText == ADMIN_PASSWORD )
 		{
-			MessagePlayer( "[#00FF00][Basemode] [#FFFFFF]Password accepted!", pPlayer );
+			MessagePlayer( "[#00ff00][Basemode] [#ffffff]Password accepted!", pPlayer );
 			pPlayerManager.Login( pPlayer, ADMIN_LEVEL );
 		}
 		else
@@ -334,11 +337,11 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			iAttempts++;
 			loginAttempts.rawset( pPlayer.Name, iAttempts );
 
-			MessagePlayer( "[#FF0000][Basemode] [#FFFFFF]Login failed (Attempts " + loginAttempts.rawget( pPlayer.Name ).tostring() + "/" + ADMIN_LOGIN_ATTEMPTS + ").", pPlayer );
+			MessagePlayer( "[#ff0000][Basemode] [#ffffff]Login failed (Attempts " + loginAttempts.rawget( pPlayer.Name ).tostring() + "/" + ADMIN_LOGIN_ATTEMPTS + ").", pPlayer );
 			
 			if ( iAttempts == ADMIN_LOGIN_ATTEMPTS )
 			{
-				MessagePlayer( "[#FF0000][Basemode] [#FFFFFF] Login attempts limit reached. Banning..." );
+				MessagePlayer( "[#ff0000][Basemode] [#ffffff] Login attempts limit reached. Banning..." );
 				BanLUID ( pPlayer.LUID );
 				BanIP ( pPlayer.IP );
 			}
@@ -351,46 +354,46 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "help" )
 	{
-		MessagePlayer( "[#FFFFFF]*********** Basemode - Help ***********" pPlayer );
+		MessagePlayer( "[#ffffff]*********** Basemode - Help ***********" pPlayer );
 		
-		if ( g_iRoundStartType == 0 ) MessagePlayer( "[#FFFFFF]The server is script controlled. The bases will start automatically.", pPlayer );
-		else if ( g_iRoundStartType == 1 )
+		if ( ROUNDSTART_TYPE == 0 ) MessagePlayer( "[#ffffff]The server is script controlled. The bases will start automatically.", pPlayer );
+		else if ( ROUNDSTART_TYPE == 1 )
 		{
-			MessagePlayer( "[#FFFFFF]The server is vote controlled. Use /votebase <ID> to start voting!", pPlayer );
-			MessagePlayer( "[#FFFF00] /votebase <ID> [#FFFFFF] - start voting", pPlayer );
+			MessagePlayer( "[#ffffff]The server is vote controlled. Use /votebase <ID> to start voting!", pPlayer );
+			MessagePlayer( "[#ffff00] /votebase <ID> [#ffffff] - start voting", pPlayer );
 		}
-		else if ( g_iRoundStartType == 2 )
+		else if ( ROUNDSTART_TYPE == 2 )
 		{
-			MessagePlayer( "[#FFFFFF]The server is admin controlled. Bases are started by admin.", pPlayer );
+			MessagePlayer( "[#ffffff]The server is admin controlled. Bases are started by admin.", pPlayer );
 			if ( CheckModerator( pPlayer ))
 			{
-				MessagePlayer( "[#FFFF00] /base <ID>[#FFFFFF] - starts round", pPlayer );
-				MessagePlayer( "[#FFFF00] /end [#FFFFFF] - ends round", pPlayer );
+				MessagePlayer( "[#ffff00] /base <ID>[#ffffff] - starts round", pPlayer );
+				MessagePlayer( "[#ffff00] /end [#ffffff] - ends round", pPlayer );
 			}
 		}
 		
 		if ( CheckModerator( pPlayer ))
 		{
-			MessagePlayer( "[#FFFF00] /t1name or /t2name <TEXT> [#FFFFFF] - change team name", pPlayer );
-			MessagePlayer( "[#FFFF00] /switch [#FFFFFF] - switch teams", pPlayer );
-			MessagePlayer( "[#FFFF00] /resetscore [#FFFFFF] - reset score", pPlayer );
+			MessagePlayer( "[#ffff00] /t1name or /t2name <TEXT> [#ffffff] - change team name", pPlayer );
+			MessagePlayer( "[#ffff00] /switch [#ffffff] - switch teams", pPlayer );
+			MessagePlayer( "[#ffff00] /resetscore [#ffffff] - reset score", pPlayer );
 		}
 		
-		MessagePlayer( "[#FFFF00] /eject [#FFFFFF] - exit bugged vehicle.", pPlayer );
-		MessagePlayer( "[#FFFF00] /fix1 or /fix2 [#FFFFFF] - fix bugged GUI (cursor not showing/hiding)", pPlayer );
-		MessagePlayer( "[#FFFF00] /info [#FFFFFF] - print script informations", pPlayer );
-		MessagePlayer( "[#FFFF00] /t <message> or 'Y' key[#FFFFFF] - teamchat", pPlayer );
+		MessagePlayer( "[#ffff00] /eject [#ffffff] - exit bugged vehicle.", pPlayer );
+		MessagePlayer( "[#ffff00] /fix1 or /fix2 [#ffffff] - fix bugged GUI (cursor not showing/hiding)", pPlayer );
+		MessagePlayer( "[#ffff00] /info [#ffffff] - print script informations", pPlayer );
+		MessagePlayer( "[#ffff00] /t <message> or 'Y' key[#ffffff] - teamchat", pPlayer );
 	}
 	else if ( szCommand == "info" )
 	{
-		MessagePlayer( "[#FFFFFF]*********** Basemode - Info ***********" pPlayer );
-		MessagePlayer( "[#FFFFFF]Basemode v" + SCRIPT_VERSION + " by Stoku", pPlayer );
-		MessagePlayer( "[#FFFFFF] Team 1: [#FF0000] " + pPlayerManager.GetTeamFullName( 0 ) + " - score: " + pPlayerManager.Team1Score, pPlayer );
-		MessagePlayer( "[#FFFFFF] Team 2: [#0000FF] " + pPlayerManager.GetTeamFullName( 1 ) + " - score: " + pPlayerManager.Team2Score, pPlayer );
+		MessagePlayer( "[#ffffff]*********** Basemode - Info ***********" pPlayer );
+		MessagePlayer( "[#ffffff]Basemode v" + SCRIPT_VERSION + " by Stoku", pPlayer );
+		MessagePlayer( "[#ffffff] Team 1: [#ff0000] " + pPlayerManager.GetTeamFullName( 0 ) + " - score: " + pPlayerManager.Team1Score, pPlayer );
+		MessagePlayer( "[#ffffff] Team 2: [#0000ff] " + pPlayerManager.GetTeamFullName( 1 ) + " - score: " + pPlayerManager.Team2Score, pPlayer );
 	}
 	else if ( szCommand == "kill" )
 	{
-		if (( iRoundStartTime < 3 ) && ( g_iRoundStartType == 0 )) MessagePlayer( "*** You can't use kill when it's less than 3 seconds before base start.", pPlayer );
+		if (( iRoundStartTime < 3 ) && ( ROUNDSTART_TYPE == 0 )) MessagePlayer( "*** You can't use kill when it's less than 3 seconds before base start.", pPlayer );
 		else 
 		{
 			Message( pPlayer.Name + " killed himself." );
@@ -407,7 +410,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "votebase" )
 	{
-		if ( g_iRoundStartType != 1 ) return 0;
+		if ( ROUNDSTART_TYPE != 1 ) return 0;
 		if ( !szText )
 		{
 			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/votebase <id>.", pPlayer );
@@ -437,6 +440,21 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			Message( "[#00ff00]Administrator " + pPlayer + " has added " + pAddedPlayer + " to the round." );
 		}
 	}
+	else if ( szCommand == "del" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText )
+		{
+			MessagePlayer ( "[#ffff00][Syntax] [#ffffff]/add <player>.", pPlayer );
+			return 0;
+		}
+		local pDeletedPlayer = FindPlayer( szText );
+		if ( pDeletedPlayer )
+		{
+			pPlayerManager.DeleteFromRound( pDeletedPlayer );
+			Message( "[#00ff00]Administrator " + pPlayer + " has deleted " + pDeletedPlayer + " from the round." );
+		}
+	}
 	else if ( szCommand == "ban" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
@@ -461,7 +479,17 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/base <id>.", pPlayer );
 			return 0;
 		}
-		pGame.Start( szText );
+		pGame.Start( "base", szText );
+	}
+	else if ( szCommand == "arena" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText )
+		{
+			MessagePlayer ( "[#ffff00][Syntax] [#ffffff]/arena <id>.", pPlayer );
+			return 0;
+		}
+		pGame.Start( "arena", szText );
 	}
 	else if ( szCommand == "cv" )
 	{
@@ -480,7 +508,8 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "end" )
 	{
-		if ( CheckModerator( pPlayer ))	pGame.End();
+		if ( !CheckModerator( pPlayer )) return 0;
+		pGame.End();
 	}
 	else if ( szCommand == "hour" )
 	{
@@ -516,7 +545,21 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		pPlayerManager.Team2Score = 0;
 		Message( "[#00ff00]Administrator " + pPlayer + " has reseted score." );
 	}
-	else if ( szCommand == "settype" )
+	else if ( szCommand == "setscore1" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		pPlayerManager.Team1Score = szText.tointeger();
+		CLIENT_UpdateScores( pPlayer, true );
+		Message( "[#00ff00]Administrator " + pPlayer + " has changed team 1 score." );
+	}
+	else if ( szCommand == "setscore2" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		pPlayerManager.Team2Score = szText.tointeger();
+		CLIENT_UpdateScores( pPlayer, true );
+		Message( "[#00ff00]Administrator " + pPlayer + " has changed team 2 score." );
+	}
+	else if ( szCommand == "starttype" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
 		if ( !szText )
@@ -526,17 +569,17 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		}
 		if ( szText == "auto" ) 
 		{
-			g_iRoundStartType = 0;
+			ROUNDSTART_TYPE = 0;
 			Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to auto." );
 		}
 		else if ( szText == "vote" )
 		{
-			g_iRoundStartType = 1;
+			ROUNDSTART_TYPE = 1;
 			Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to vote started." );
 		}
 		else if ( szText == "manual" )
 		{
-			g_iRoundStartType = 2;
+			ROUNDSTART_TYPE = 2;
 			Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to admin controlled." );
 		}
 		else
@@ -544,19 +587,39 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			switch ( szText.tointeger() )
 			{
 				case 0:
-					g_iRoundStartType = 0;
+					ROUNDSTART_TYPE = 0;
 					Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to auto." );
 					break;
 				case 1:
-					g_iRoundStartType = 1;
+					ROUNDSTART_TYPE = 1;
 					Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to vote started." );
 					break;
 				case 2:
-					g_iRoundStartType = 2;
+					ROUNDSTART_TYPE = 2;
 					Message( "[#00ff00]Administrator " + pPlayer + " has changed round start type to admin controlled." );
 					break;
 			}
 		}
+	}
+	else if ( szCommand == "settype" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText )
+		{
+			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/settype base/arena", pPlayer );
+			return 0;
+		}
+		if ( szText == "base" ) 
+		{
+			AUTOPLAY_TYPE = "base";
+			Message( "[#00ff00]Administrator " + pPlayer + " has changed bases as autoplay." );
+		}
+		else if ( szText == "arena" )
+		{
+			AUTOPLAY_TYPE = "arena";
+			Message( "[#00ff00]Administrator " + pPlayer + " has changed arenas as autoplay." );
+		}
+		else MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/settype base/arena", pPlayer );
 	}
 	else if ( szCommand == "setadminpass" )
 	{
@@ -577,31 +640,28 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "switch" )
 	{
-		if ( CheckModerator( pPlayer )) pPlayerManager.SwitchTeams();
+		if ( !CheckModerator( pPlayer )) return 0;
+		pPlayerManager.SwitchTeams();
 		Message( "[#00ff00]Administrator " + pPlayer + " has switched teams." );
 	}
 	else if ( szCommand == "t1name" )
 	{
-		if ( CheckModerator( pPlayer ))
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( szText.len() == 0 ) MessagePlayer( "[#ff0000][Syntax] [#ffffff]/t1name <text>", pPlayer, Colour( 255, 0, 0 ));
+		else
 		{
-			if ( szText.len() == 0 ) MessagePlayer( "[#ff0000][Syntax] [#ffffff]/t1name <text>", pPlayer, Colour( 255, 0, 0 ));
-			else
-			{
-				pPlayerManager.SetTeamName( 1, szText );
-				Message( "[#00ff00]Administrator " + pPlayer + " has changed team 1 name to " + szText );
-			}
+			pPlayerManager.SetTeamName( 1, szText );
+			Message( "[#00ff00]Administrator " + pPlayer + " has changed team 1 name to " + szText );
 		}
 	}
 	else if ( szCommand == "t2name" )
 	{
-		if ( CheckModerator( pPlayer ))
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( szText.len() == 0 ) MessagePlayer( "[#ff0000][Syntax] [#ffffff]/t2name <text>", pPlayer, Colour( 255, 0, 0 ));
+		else
 		{
-			if ( szText.len() == 0 ) MessagePlayer( "[#ff0000][Syntax] [#ffffff]/t2name <text>", pPlayer, Colour( 255, 0, 0 ));
-			else
-			{
-				pPlayerManager.SetTeamName( 2, szText );
-				Message( "[#00ff00]Administrator " + pPlayer + " has changed team 2 name to " + szText );
-			}
+			pPlayerManager.SetTeamName( 2, szText );
+			Message( "[#00ff00]Administrator " + pPlayer + " has changed team 2 name to " + szText );
 		}
 	}
 	else if ( szCommand == "weather" )

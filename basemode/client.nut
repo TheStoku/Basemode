@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC3 by Stoku					# */
+/* #			BaseMode v1.0-RC4 by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC3";
+local SCRIPT_VERSION			= "1.0-RC4";
 local SCRIPT_AUTHOR				= "Stoku";
 
 local GUI_THEME_MAIN_COLOR 		= Colour( 0, 255, 0 );
@@ -20,7 +20,7 @@ g_StatsPanel <- null;
 g_StatsPanelGradient <- null;
 g_Team1StatsLabel <- null;
 g_Team2StatsLabel <- null;
-//g_SpawnScreenLabel <- null;
+g_SpawnScreenLabel <- null;
 g_ScoreLabel <- null;
 g_TimeLabel <- null;
 g_SpeedoLabel <- null;
@@ -84,8 +84,8 @@ function onScriptLoad()
 	//BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
 	//BindKey( '9', BINDTYPE_DOWN, "SpectatePlayer_Previous" );
 	
-	BindKey( '0', BINDTYPE_DOWN, "plus" );
-	BindKey( '9', BINDTYPE_DOWN, "minus" );
+	//BindKey( '0', BINDTYPE_DOWN, "plus" );
+	//BindKey( '9', BINDTYPE_DOWN, "minus" );
 	
 	BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
 	
@@ -148,17 +148,6 @@ function onScriptLoad()
 	g_Team2StatsLabel.FontTags = TAG_BOLD;
 	g_Team2StatsLabel.TextAlignment = ALIGN_TOP_RIGHT;
 	g_StatsPanel.AddChild( g_Team2StatsLabel );
-	
-	/*g_SpawnScreenLabel = GUILabel( VectorScreen( 0, 0 ), ScreenSize( 100, 200 ), " " );
-	g_SpawnScreenLabel.TextColour = Colour( 255, 255, 255 );
-	g_SpawnScreenLabel.Alpha = 255;
-	g_SpawnScreenLabel.Flags = FLAG_SHADOW;
-	g_SpawnScreenLabel.Visible = true;
-	g_SpawnScreenLabel.FontName = "Trebuchet MS";
-	g_SpawnScreenLabel.FontSize = 30;
-	g_SpawnScreenLabel.FontTags = TAG_BOLD;
-	g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
-	AddGUILayer( g_SpawnScreenLabel );*/
 	
 	g_CaptureWindow = GUIWindow( VectorScreen( ScreenWidth - 400, 300 ), ScreenSize( 300, 6 ), "Capturing" );
 	g_CaptureWindow.Colour = Colour( 0, 0, 0 );
@@ -667,6 +656,29 @@ function UpdateClock()
 	else iMins = date().min;
 	
 	g_TimeLabel.Text = iHours + ":" + iMins;
+}
+
+function SetSpawnClass( szName )
+{
+	if ( !g_SpawnScreenLabel )
+	{
+		g_SpawnScreenLabel = GUILabel( VectorScreen( ScreenWidth/2-10, ScreenHeight/2 ), ScreenSize( 0, 0 ), " " );
+		//g_SpawnScreenLabel.TextColour = Colour( 255, 255, 255 );
+		g_SpawnScreenLabel.Flags = FLAG_COLOURING;
+		g_SpawnScreenLabel.Visible = true;
+		g_SpawnScreenLabel.FontName = "Veranda";
+		g_SpawnScreenLabel.FontSize = 16;
+		g_SpawnScreenLabel.FontTags = TAG_BOLD;
+		//g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
+		AddGUILayer( g_SpawnScreenLabel );
+	}
+
+	if ( !szName ) g_SpawnScreenLabel.Visible = false;
+	else
+	{
+		g_SpawnScreenLabel.Text = szName;
+		g_SpawnScreenLabel.Visible = true;
+	}
 }
 
 function TimeProcess()
