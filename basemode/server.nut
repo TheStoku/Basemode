@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC4 by Stoku						# */
+/* #			BaseMode v1.0-RC5 by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC4";
+SCRIPT_VERSION					<- "1.0-RC5";
 local SCRIPT_AUTHOR				= "Stoku";
 
 SCRIPT_DIR						<- "Scripts/basemode/";
@@ -58,14 +58,15 @@ function Load()
 	iRoundStartTime <- AUTOPLAY_AWAIT_TIME;
 	loginAttempts <- {};
 	adminList <- {};
+	CPlayer <- array( GetMaxPlayers(), null );
+	
+	WEP_AFK_KILLER_REASON <- 155;
 	
 	g_Timer = NewTimer( "TimeProcess", 1000, 0 );
 	if ( ROUNDSTART_TYPE != 0 ) g_Timer.Stop();
 	
 	g_CaptureTimer = NewTimer( "CaptureTimeProcess", 1000, 0 );
 	g_CaptureTimer.Stop();
-	
-	print( "Script has been loaded successfully!" );
 	
 	return 1;
 }
@@ -118,7 +119,7 @@ function TimeProcess()
 		if (( pPlayerManager.GetSpawnedPlayersCount( 0 ) == 0 ) || ( pPlayerManager.GetSpawnedPlayersCount( 1 ) == 0 ))
 		{
 			SmallMessage( "                                                        ~l~Waiting for players...", 850, 0 );
-			iRoundStartTime = 20;
+			iRoundStartTime = AUTOPLAY_AWAIT_TIME;
 		}
 		else
 		{
@@ -138,6 +139,17 @@ function TimeProcess()
 				
 				local iRand = rand() % ( 1 - MAP_COUNT );
 				if ( iRand == 0 ) iRand++;	// hotfix :P
+				
+				if ( AUTOPLAY_ROUND_REPLAY && !g_iLastPlayedBase )
+				{
+					g_iLastPlayedBase = iRand;
+				}
+				else
+				{
+					iRand = g_iLastPlayedBase;
+					g_iLastPlayedBase = null;
+				}
+				
 				pGame.Start( AUTOPLAY_TYPE, iRand );
 			}
 		}
@@ -165,6 +177,24 @@ function CheckModerator( pModerator )
 
 function onPlayerJoin( pPlayer )
 {
+	if ( pPlayer.Name.len() > MAX_NICK_LENGHT )
+	{
+		MessagePlayer( "[#ffff00]Your nick-name is too long (limit: " +  MAX_NICK_LENGHT + ")! Please change it.", pPlayer );
+		KickPlayer( pPlayer );
+		return 0;
+	}
+	
+	// Delete colour formatting, thx Xenon
+	local szNick = pPlayer.Name;
+	if ( szNick.len() == 0 )
+	{
+		MessagePlayer( "[#ffff00]Your nick-name is too short! Please change it.", pPlayer );
+		KickPlayer( pPlayer );
+		return 0;
+	}
+	else pPlayer.Name = szNick;
+	
+	CPlayer[ pPlayer.ID ] = CPlayerClass( pPlayer );
 	pPlayerManager.Add( pPlayer );
 	
 	if ( LUID_AUTOLOGIN )
@@ -193,7 +223,7 @@ function onPlayerPart( pPlayer, iReasonID )
 	
 	if ( pPlayerManager.IsLoggedIn( pPlayer ) ) adminList.rawdelete( pPlayer.Name );
 	
-	return 0;
+	return 1;
 }
 
 function onPlayerRequestClass( pPlayer, iTeamID )
@@ -210,35 +240,18 @@ function onPlayerRequestClass( pPlayer, iTeamID )
 
 function onPlayerSpawn( pPlayer, pSpawn )
 {
-	pPlayer.Immune = true;
-	pPlayerManager.CountPlayers();
-	CLIENT_UpdateSpawnSelection( pPlayer, "" );
-	
-	foreach( iPlayerID in Players )
-	{
-		local pPlayer = FindPlayer( iPlayerID );
-
-		if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
-	}
-	
-	if ( pPlayer.Team == 0 )
-	{
-		Message( "[#ffffff]*** [#ff0000]" + pPlayer.Name + "[#ffffff] has joined the [#ff0000]" + pPlayerManager.Team1Name + "[#ffffff] team! [#ffffff][#ffff00][Members: " + pPlayerManager.GetTeamPlayersCount( 0 ) + " | Wins: " + pPlayerManager.Team1Score + " | Loses: " + pPlayerManager.Team2Score + "]" );
-	}
-	else if ( pPlayer.Team == 1 )
-	{
-		Message( "[#ffffff]*** [#0000ff]" + pPlayer.Name + "[#ffffff] has joined the [#0000ff]" + pPlayerManager.Team2Name + "[#ffffff] team! [#ffffff][#ffff00][Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " | Wins: " + pPlayerManager.Team2Score + " | Loses: " + pPlayerManager.Team1Score + "]" );
-	}
-	
-	return 1;
+	CPlayer[ pPlayer.ID ].Spawn();
 }
 
 function onPlayerDeath( pPlayer, iReason )
 {
-	if ( iReason == WEP_VEHICLE ) Message( "* " + pPlayer.Name + " died (Vehicle).", 255, 255, 0 );
-	else if ( iReason == WEP_EXPLOSION ) Message( "* " + pPlayer.Name + " died (Explosion).", 255, 255, 0 );
-	else if ( iReason == WEP_DROWNED ) Message( "* " + pPlayer.Name + " drowned.", 255, 255, 0 );
-	else if ( iReason == WEP_FALL ) Message( "* " + pPlayer.Name + " died (Fall).", 255, 255, 0 );
+	if ( iReason == WEP_VEHICLE ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Vehicle).", 255, 255, 0 );
+	else if ( iReason == WEP_EXPLOSION ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Explosion).", 255, 255, 0 );
+	else if ( iReason == WEP_DROWNED ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Drowned)", 255, 255, 0 );
+	else if ( iReason == WEP_FALL ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Fall).", 255, 255, 0 );
+	else if ( iReason == WEP_FLAMETHROWER || WEP_MOLOTOV ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Fire).", 255, 255, 0 );
+	else if ( iReason == WEP_AFK_KILLER_REASON ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Anti AFK kill system).", 255, 255, 0 );
+	else if ( iReason != 255 ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Unknown: " + iReason + ").", 255, 255, 0 );
 	
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
@@ -247,17 +260,14 @@ function onPlayerDeath( pPlayer, iReason )
 	{
 		local pPlayer = FindPlayer( iPlayerID );
 
-		if ( pPlayer )
-		{
-			CLIENT_UpdateTeamNames( pPlayer );				
-		}
+		if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
 	}
 }
 
 function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 {
-	Message( "* " + pSettings.GetTeamColor( pKiller.Team ) + pKiller.Name + " [#ffff00]killed " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + " [#ffff00]with [#00ff00]" + GetWeaponName( iWeapon ) + "." );
-	pKiller.Score++;
+	Message( "* " + pSettings.GetTeamColor( pKiller.Team ) + pKiller.Name + " [#ffffff]killed " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + " [#ffffff]with " + GetWeaponName( iWeapon ) + "." );
+	if ( pKiller != pPlayer ) pKiller.Score++;
 	
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
@@ -272,6 +282,8 @@ function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 			CLIENT_UpdateCaptureTime( pPlayer );			
 		}
 	}
+	
+	return 1;
 }
 
 function onM16VehicleShot( pPlayer, pVehicle, iWeapon )
@@ -279,9 +291,20 @@ function onM16VehicleShot( pPlayer, pVehicle, iWeapon )
 	pVehicle.Health -= 20;
 }
 
-function onM16PlayerKill( pKiller, pPlayer )
+function onM16PlayerKill( pKiller, pPlayer, iWeapon )
 {
 	pPlayer.Health = 1;
+	
+	if ( pKiller.Name == pPlayer.Name )
+	{
+		if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();
+		return 1;//onPlayerDeath( pPlayer, iWeapon );
+	}
+	else
+	{
+		if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();
+		//onPlayerKill( pKiller, pPlayer, iWeapon, 255 );
+	}
 }
 
 function onPlayerEnteringVehicle( pPlayer, pVehicle, iDoor )
@@ -293,7 +316,7 @@ function onPlayerEnteringVehicle( pPlayer, pVehicle, iDoor )
 function onPlayerEnterSphere( pPlayer, pSphere )
 {
 	if ( pGame.IsArena ) return 0;
-	if ( pPlayer.Team != g_iDefendingTeam )
+	if ( pPlayer.Team != g_iDefendingTeam && !pGame.Taker )
 	{
 		pGame.Taker = pPlayer.Name;
 		g_CaptureTimer.Start();
@@ -383,11 +406,13 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		MessagePlayer( "[#ffff00] /fix1 or /fix2 [#ffffff] - fix bugged GUI (cursor not showing/hiding)", pPlayer );
 		MessagePlayer( "[#ffff00] /info [#ffffff] - print script informations", pPlayer );
 		MessagePlayer( "[#ffff00] /t <message> or 'Y' key[#ffffff] - teamchat", pPlayer );
+		MessagePlayer( "[#ffff00] /switch[#ffffff] - switch team in lobby", pPlayer );
 	}
 	else if ( szCommand == "info" )
 	{
 		MessagePlayer( "[#ffffff]*********** Basemode - Info ***********" pPlayer );
 		MessagePlayer( "[#ffffff]Basemode v" + SCRIPT_VERSION + " by Stoku", pPlayer );
+		if ( pGame.IsRoundInProgress ) MessagePlayer( "[#ffff00]Base n ame: [#ffffff]" + pBase.Name + "[#ffff00]" + "Author:[#ffffff]" + pBase.Author + "[#ffff00]Attackers spawn ID: [#ffffff]" + pBase.SpawnID + "[#ffff00]Round Time: [#ffffff]" + pBase.RoundTime + "[#ffff00]Weather: [#ffffff]" + pBase.Weather + "[#ffff00]Hour: [#ffffff]" + pBase.Hour + ":00", pPlayer );
 		MessagePlayer( "[#ffffff] Team 1: [#ff0000] " + pPlayerManager.GetTeamFullName( 0 ) + " - score: " + pPlayerManager.Team1Score, pPlayer );
 		MessagePlayer( "[#ffffff] Team 2: [#0000ff] " + pPlayerManager.GetTeamFullName( 1 ) + " - score: " + pPlayerManager.Team2Score, pPlayer );
 	}
@@ -420,6 +445,14 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		{
 			pVoteManager.VoteStart( pPlayer, szText );
 			return 1;
+		}
+	}
+	else if ( szCommand == "switch" )
+	{
+		if ( CPlayer[ pPlayer.ID ].SwitchTeam() )
+		{
+			Message( "[#ffffff]*** " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffffff] has switched his team to " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayerManager.GetTeamName( pPlayer.Team ) + "[#ffffff]." );
+			if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
 		}
 	}
 	
@@ -509,7 +542,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	else if ( szCommand == "end" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
-		pGame.End();
+		pGame.End( 255 );
 	}
 	else if ( szCommand == "hour" )
 	{
@@ -690,19 +723,21 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "pos" )
 	{
-		print( pPlayer.Pos + " angle: " + pPlayer.Angle );
+		if ( !pPlayer.Vehicle )
+		{
+			print( "Spawn = ::Vector( " + pPlayer.Pos.x + ", " + pPlayer.Pos.y + ", "  + pPlayer.Pos.z + " );" );
+			print( "Spawn_Angle = " + pPlayer.Angle + ";" );
+			print( "Marker = ::Vector( " + pPlayer.Pos.x + ", " + pPlayer.Pos.y + ", "  + pPlayer.Pos.z + " );" );
+		}
+		else
+		{
+			print( "::CreateVehicle( " + pPlayer.Vehicle.Model + ", Vector( " + pPlayer.Vehicle.Pos.x + ", " + pPlayer.Vehicle.Pos.y + ", "  + pPlayer.Vehicle.Pos.z + " ), " + pPlayer.Angle + ", -1, -1 );" );
+		}
 	}
-	else if ( szCommand == "player" )
+	else if ( szCommand == "vpos" )
 	{
-		print( "<player x=\"" + pPlayer.Pos.x + "\" y=\"" + pPlayer.Pos.y + "\" z=\"" + pPlayer.Pos.z + "\" angle=\"" + pPlayer.Angle + "\"/>" );
-	}
-	else if ( szCommand == "marker" )
-	{
-		print( "<marker x=\"" + pPlayer.Pos.x + "\" y=\"" + pPlayer.Pos.y + "\" z=\"" + pPlayer.Pos.z + "\"/>" );
-	}
-	else if ( szCommand == "vehicle" )
-	{
-		print( "<vehicle id=\"" + szText + "\"x=\"" + pPlayer.Vehicle.Pos.x + "\" y=\"" + pPlayer.Vehicle.Pos.y + "\" z=\"" + pPlayer.Vehicle.Pos.z + "\"" +" angle=\"" + pPlayer.Vehicle.Angle + "\"" + " colour1=\"0" + "\"" + " colour2=\"0" + "\"" + "/>" );
+		print( "::Vector( " + pPlayer.Vehicle.Pos.x + ", " + pPlayer.Vehicle.Pos.y + ", "  + pPlayer.Vehicle.Pos.z + " );" );
+		print( "Angle: " + pPlayer.Vehicle.Angle );
 	}
 	
 	return 1;
@@ -712,19 +747,32 @@ function SendTeamMessage( pPlayer, szMessage )
 {
 	if ( !pPlayer.Spawned ) return 0;
 	
-	foreach( iPlayerID in Players )
+	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage ))
 	{
-		local pTeamPlayer = FindPlayer( iPlayerID );
-		if (( pTeamPlayer.Team == pPlayer.Team ) && ( pTeamPlayer.Spawned )) MessagePlayer( pSettings.GetTeamColor( pPlayer.Team ) + "* [TEAM] " + pPlayer.Name + ": [#ffffff]" + szMessage, pTeamPlayer);
+		foreach( iPlayerID in Players )
+		{
+			local pTeamPlayer = FindPlayer( iPlayerID );
+			if (( pTeamPlayer.Team == pPlayer.Team ) && ( pTeamPlayer.Spawned )) MessagePlayer( pSettings.GetTeamColor( pPlayer.Team ) + "* [TEAM] " + pPlayer.Name + ": [#ffffff]" + szMessage, pTeamPlayer);
+		}
 	}
+	else return 0;
+}
+
+function onPlayerChat( pPlayer, szMessage )
+{
+	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) return 1;
+	else return 0;
+}
+
+function onPlayerAction( pPlayer, szMessage )
+{
+	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) return 1;
+	else return 0;
 }
 
 function onConsoleInput( szCommand, szText )
 {
-	if ( szCommand == "apu" )
-	{
-	}
-	else if ( szCommand == "switch" ) pPlayerManager.SwitchTeams();
+	if ( szCommand == "switch" ) pPlayerManager.SwitchTeams();
 	else if ( szCommand == "team1" ) pPlayerManager.SetTeamName( 1, szText );
 	else if ( szCommand == "team2" ) pPlayerManager.SetTeamName( 2, szText );
 	else if ( szCommand == "ignore" )

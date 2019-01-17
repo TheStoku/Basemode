@@ -8,13 +8,137 @@ g_Blip.Colour = 2;
 g_Marker <- CreateSphere( Vector( -1009.0, -164.0, 34.5 ), 1.0 );
 g_Marker.Type = MARKER_TYPE_PLAYER ;
 
-local lobby_red = Vector( 165.10, -1003.50, 29.53 );
-local lobby_red_angle = 270.0;
-
-local lobby_blue =  Vector( 165.74, -990.81, 29.53 );
-local lobby_blue_angle = 176.229;
-
 g_iDefendingTeam <- 0;
+g_iLastPlayedBase <- null;
+
+class CPlayerClass
+{
+	Instance = null;
+	LastMessage = null;
+	LastMessageTime = null;
+	Repeats = null;
+	Warnings = null;
+	
+	constructor( pPlayer )
+	{
+		Instance = pPlayer;
+		LastMessage = "";
+		LastMessageTime = 0;
+		Repeats = 0;
+		Warnings = 0;
+	}
+	function DetectSpam( szMessage )
+	{
+		if ( !CHAT_FLOOD_WARNINGS ) return;
+		if ( CPlayer[ this.Instance.ID ].Warnings == CHAT_FLOOD_WARNINGS )
+		{
+			MessagePlayer( "[#ff0000][Anti-spam] [#ffffff]You have reached warn level, relax :)", this.Instance );
+			MessagePlayer( "[#ff0000][Anti-spam] [#ffffff]Warn level will decrease after every round.", this.Instance );
+			MessagePlayer( pSettings.GetTeamColor( this.Instance.Team ) + this.Instance.Name + "[#ffffff]: " + szMessage, this.Instance );
+			return 0;
+		}
+		if ( szMessage == CPlayer[ this.Instance.ID ].LastMessage )
+		{
+			CPlayer[ this.Instance.ID ].Repeats++;
+			
+			if ( GetTickCount() - CPlayer[ this.Instance.ID ].LastMessageTime < CHAT_REPEAT_INTERVAL )
+			{
+				CPlayer[ this.Instance.ID ].Warnings++;
+				MessagePlayer( "[#ff0000][Anti-spam] [#00ff00]Please don't repeat yourself! Warns: " + CPlayer[ this.Instance.ID ].Warnings + "/" + CHAT_FLOOD_WARNINGS, this.Instance );
+			}
+			else if ( CPlayer[ this.Instance.ID ].Repeats > CHAT_REPEAT_ALLOWED )
+			{
+				CPlayer[ this.Instance.ID ].Warnings++;
+				MessagePlayer( "[#ff0000][Anti-spam] [#00ff00]Please don't repeat yourself! Warns: " + CPlayer[ this.Instance.ID ].Warnings + "/" + CHAT_FLOOD_WARNINGS, this.Instance );
+			}
+		}
+		else if ( GetTickCount() - CPlayer[ this.Instance.ID ].LastMessageTime < CHAT_FLOOD_INTERVAL )
+		{
+			CPlayer[ this.Instance.ID ].Warnings++;
+			
+			MessagePlayer( "[#ff0000][Anti-spam] [#ffffff]You have been warned for spamming.", this.Instance );
+			MessagePlayer( "[#ff0000][Anti-spam] [#ffffff]Warns: " + CPlayer[ this.Instance.ID ].Warnings + "/" + CHAT_FLOOD_WARNINGS, this.Instance );
+			MessagePlayer( "[#ff0000][Anti-spam] [#ffffff]If you don't stop, you'll get muted.", this.Instance );
+		}
+		
+		CPlayer[ this.Instance.ID ].LastMessage = szMessage;
+		CPlayer[ this.Instance.ID ].LastMessageTime = GetTickCount();
+
+		if ( CPlayer[ this.Instance.ID ].Warnings < CHAT_FLOOD_WARNINGS )
+		{
+			if ( this.Repeats > 0 ) this.Repeats--;
+			return 1;
+		}
+	}
+	function IsMuted()
+	{
+		if ( this.Warnings == 10 ) return 1;
+		else return false;
+	}
+	function DecreaseWarns()
+	{
+		if ( this.Warnings > 0 )
+		{
+			if ( this.Warnings == CHAT_FLOOD_WARNINGS ) MessagePlayer( "[#ff0000][Anti-spam] [#00ff00]You have been unmuted, but please dont spam again! :)", this.Instance );
+			
+			this.Warnings--;
+			MessagePlayer( "[#ff0000][Anti-spam] [#00ff00]Your warning level has decreased - " + this.Warnings + "/" + CHAT_FLOOD_WARNINGS, this.Instance );
+		}
+	}
+	function Unmute()
+	{
+		LastMessage = "";
+		LastMessageTime = 0;
+		Repeats = 0;
+		Warnings = 0;
+		
+		MessagePlayer( "[#ff0000][Anti-spam] [#00ff00]You have been unmuted, but please dont spam again! :)", this.Instance );
+	}
+	function Spawn()
+	{
+		if ( TEAM_BALANCE_DIFFERENCE && !pPlayerManager.CheckBalance( this.Instance, this.Instance.Team )) return;
+		
+		this.Instance.Immune = true;
+		pPlayerManager.CountPlayers();
+		CLIENT_UpdateSpawnSelection( this.Instance, "" );
+		
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
+		}
+		
+		this.Instance.Pos = lobby_spawn_pos[this.Instance.Team];
+		this.Instance.Angle = lobby_spawn_angle[this.Instance.Team];
+		
+		Message( "[#ffffff]*** " + pSettings.GetTeamColor( this.Instance.Team ) + this.Instance.Name + "[#ffffff] has joined the " + pSettings.GetTeamColor( this.Instance.Team ) + pPlayerManager.GetTeamName( this.Instance.Team ) + "[#ffffff] team!" );
+		if ( this.Instance.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( this.Instance.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( this.Instance.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( this.Instance.Team ) + "]", this.Instance );
+		
+		return 1;
+	}
+	function SwitchTeam()
+	{
+		if ( pGame.IsRoundInProgress ) { MessagePlayer( "[#ff0000][Error] [#00ff00]You cant change your team while round is in progress.", this.Instance ); return 0; }
+		else if ( !this.Instance.Spawned ) { MessagePlayer( "[#ff0000][Error] [#00ff00]You must be spawned first.", this.Instance ); return 0; }
+		
+		if ( this.Instance.Team == 0 ) this.Instance.Team = 1;
+		else if ( this.Instance.Team == 1 ) this.Instance.Team = 0;
+		
+		pPlayerManager.CountPlayers();
+		
+		local pSpawnClass = ::FindSpawnClass( this.Instance.Team );
+		this.Instance.Skin = pSpawnClass.Skin;
+		this.Instance.Pos = lobby_spawn_pos[this.Instance.Team];
+		this.Instance.Angle = lobby_spawn_angle[this.Instance.Team];
+		
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
+		}
+		return 1;
+	}
+}
 
 class CSettings
 {
@@ -29,6 +153,7 @@ class CSettings
 	RifleAmmo = 25;
 	MolotovAmmo = 2;
 	GrenadeAmmo = 2;
+	BaseballBat = true;
 	
 	TEAM1_HEX_COLOR = "[#ff0000]";	// red
 	TEAM2_HEX_COLOR = "[#0000ff]";	// blue
@@ -38,28 +163,22 @@ class CSettings
 	{
 		switch ( iWeaponID )
 		{
-			// Colt45
+			case 1:
+				return BaseballBat;
 			case 2:
 				return ColtAmmo;
-			// UZI
 			case 3:
 				return UZIAmmo;
-			// Shotgun
 			case 4:
 				return ShotgunAmmo;
-			// AK47
 			case 5:
 				return AKAmmo;
-			// M16
 			case 6:
 				return M16Ammo;
-			// Rifle
 			case 7:
 				return RifleAmmo;
-			// Molotov
 			case 10:
 				return MolotovAmmo;
-			// Grenade
 			case 11:
 				return GrenadeAmmo;
 		}
@@ -103,6 +222,7 @@ class CSettings
 		if ( iTeamID == 0 ) return TEAM1_HEX_COLOR;
 		else if ( iTeamID == 1 )  return TEAM2_HEX_COLOR;
 		else if ( iTeamID == 2 )  return SPECT_HEX_COLOR;
+		else return "[#ffffff]";
 	}
 	
 	function UpdateClientSettings( pPlayer )
@@ -225,7 +345,10 @@ class CPlayerManager
 		
 		pSettings.UpdateClientSettings( pPlayer );
 		
-		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID );
+		local isAttacker = false;
+		if ( pPlayer.Team != g_iDefendingTeam ) isAttacker = true;
+		
+		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID, isAttacker );
 			
 		if ( !pGame.IsArena )
 		{
@@ -268,37 +391,18 @@ class CPlayerManager
 	}
 	function DeleteFromRound( pPlayer )
 	{
-		if ( pPlayer )
+		if ( pPlayer && pPlayer.Spawned )
 		{
-			if ( pPlayer.Spawned )
-			{
-				if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();			
-				pPlayer.ClearWeapons();
-				pPlayer.Immune = true;
-				pPlayer.Health = 100;
-				pPlayer.Frozen = false;
-				//pPlayer.RestoreCamera();
-				
-				if ( pPlayer.Team == 0 )
-				{
-					pPlayer.Pos = lobby_red;
-					pPlayer.Angle = lobby_red_angle;
-				}
-				else if ( pPlayer.Team == 1 )
-				{
-					pPlayer.Pos = lobby_blue;
-					pPlayer.Angle = lobby_blue_angle;
-				}
-				else
-				{
-					pPlayer.Pos = lobby_spectator;
-					pPlayer.Angle = lobby_spectator_angle;
-				}
-			
-				pPlayerManager.DeleteTeam( pPlayer );
-			}
-			
-			CallClientFunc( pPlayer, "basemode/client.nut", "onBaseEnd", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
+			if ( pPlayer.Vehicle ) pPlayer.RemoveFromVehicle();			
+			pPlayer.ClearWeapons();
+			pPlayer.Immune = true;
+			pPlayer.Health = 100;
+			pPlayer.Frozen = false;
+			//pPlayer.RestoreCamera();
+			pPlayer.Pos = lobby_spawn_pos[pPlayer.Team];
+			pPlayer.Angle = lobby_spawn_angle[pPlayer.Team];
+		
+			pPlayerManager.DeleteTeam( pPlayer );
 		}
 	}
 	function Login( pPlayer, iLevel )
@@ -328,6 +432,18 @@ class CPlayerManager
 	function Delete( pPlayer )
 	{
 		Players.rawdelete( pPlayer.Name );
+	}
+	function GetTeamWins( iTeamID )
+	{
+		if ( iTeamID == 0 ) return Team1Score;
+		else if ( iTeamID == 1 ) return Team2Score;
+		else return 0;
+	}
+	function GetTeamLoses( iTeamID )
+	{
+		if ( iTeamID == 0 ) return Team2Score;
+		else if ( iTeamID == 1 ) return Team1Score;
+		else return 0;
 	}
 	function GetTeamFullName( iTeamID )
 	{
@@ -470,32 +586,48 @@ class CPlayerManager
 		else if ( iTeamID == 1 ) return SpawnedBluePlayers;
 		else return 0;
 	}
+	function CheckBalance( pPlayer, iTeamID )
+	{
+		local iOpponentTeam;
+		if ( iTeamID == 0 ) iOpponentTeam = 1;
+		else if ( iTeamID == 1 ) iOpponentTeam = 0;
+		if ( pPlayerManager.GetSpawnedPlayersCount( iTeamID ) > pPlayerManager.GetSpawnedPlayersCount( iOpponentTeam ))
+		{
+			local iDifference = pPlayerManager.GetSpawnedPlayersCount( iTeamID ) - pPlayerManager.GetSpawnedPlayersCount( iOpponentTeam );
+			if ( iDifference > TEAM_BALANCE_DIFFERENCE )
+			{
+				CPlayer[ pPlayer.ID ].SwitchTeam();
+				MessagePlayer( "[#ff0000]There are too many players in selected team.", pPlayer );
+				Message( "[#00ff00]Team balancer has moved " + pPlayer.Name + " to " + pPlayerManager.GetTeamName( pPlayer.Team ) + " team." );
+				if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
+			}
+			else return 1;
+		}
+		else return 1;
+	}
 	function CheckWinner()
 	{
 		if ( !pGame.IsRoundInProgress ) return 0;
 		
 		if (( RedMembers == 0 ) && ( BlueMembers == 0 ))
 		{
-			pGame.End();
+			pGame.End( 255 );
 			Message( "[#00FF00]*** This round was a draw!" );
-			//BigMessage( "This round was a draw!", 5000, 1 );
 		}
 		else if (( RedMembers == 0 ) || ( BlueMembers == 0 ))
 		{			
 			if ( RedMembers == 0 )
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (killed all enemies)" );
-				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (killed all enemies)" );
-				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			
-			pGame.End();
+			pGame.End( 1 );
 		}
 		else if ( pBase.RoundTime == 0 )
 		{
@@ -503,34 +635,30 @@ class CPlayerManager
 			else if ( g_iDefendingTeam == 1 )
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (timeout)" );
-				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
 			}
 			else
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (timeout)" );
-				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
 			}
 			
-			pGame.End();
+			pGame.End( 0 );
 		}
 		else if ( pGame.CaptureTime == 15 )
 		{			
 			if ( g_iDefendingTeam == 1 )
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (captured the base)" );
-				//BigMessage( "~b~" + pPlayerManager.Team1Name + " team wins!", 5000, 1 );
 				Team1Score++;
+				pGame.End( 0 );
 			}
 			else
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (captured the base)" );
-				//BigMessage( "~r~" + pPlayerManager.Team2Name + " team wins!", 5000, 1 );
 				Team2Score++;
+				pGame.End( 1 );
 			}
-			
-			pGame.End();
 		}
 		
 		return 1;
@@ -681,7 +809,6 @@ class CSpawn
 		Spawn_Z = pSpawnData.Spawn.z;
 		Spawn_Angle = pSpawnData.Spawn_Angle;
 		
-		//pSpawnData.CreateVehicles()
 		if ( pSpawnData.CreateVehicles() ) pSpawn.PrepareVehicles();
 		
 		return 1;
@@ -776,11 +903,14 @@ class CGameLogic
 		}
 	}
 	
-	function End()
+	function End( iWinnerTeam )
 	{
 		if ( !IsRoundInProgress ) return 0;
 		::SetServerRule( "Base", "Main Lobby" );
 		::SetServerRule( "Time left", "0:00" );
+		SetWeather( LOBBY_WEATHER );
+		if ( LOBBY_HOUR == -1 ) SetTime( date().hour, date().min );
+		else SetTime( LOBBY_HOUR, 00 );
 		pPlayerManager.SwitchTeams();
 		IsRoundInProgress = false;
 		IsArena = false;
@@ -794,6 +924,13 @@ class CGameLogic
 		foreach( iPlayerID in Players )
 		{
 			local pPlayer = FindPlayer( iPlayerID );
+			local isWinner = false;
+			
+			CPlayer[ pPlayer.ID ].DecreaseWarns();
+			
+			if ( pPlayer.Team == iWinnerTeam ) isWinner = true;
+			CallClientFunc( pPlayer, "basemode/client.nut", "onBaseEnd", pPlayerManager.Team1Score, pPlayerManager.Team2Score, pPlayer.Spawned, isWinner );
+			
 			pPlayerManager.DeleteFromRound( pPlayer );
 		}
 		
@@ -842,5 +979,5 @@ function CLIENT_UpdateSpawnSelection( pPlayer, szName )
 
 function CLIENT_UpdateSettings( pPlayer )
 {
-	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, GetMaxPlayers() );
+	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, GetMaxPlayers(), AFK_SLAP_TIME );
 }

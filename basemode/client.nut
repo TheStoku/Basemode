@@ -1,19 +1,23 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC4 by Stoku						# */
+/* #			BaseMode v1.0-RC5 by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC4";
+local SCRIPT_VERSION			= "1.0-RC5";
 local SCRIPT_AUTHOR				= "Stoku";
 
 local GUI_THEME_MAIN_COLOR 		= Colour( 0, 255, 0 );
 local SETTING_MUTE				= false;
+local WEP_AFK_KILLER 			= 155;
 
 g_pLocalPlayer <- FindLocalPlayer();
 g_pMarker <- null;
 g_Timer <- null;
 g_iGameState <- 0;		// 0-lobby, 1=base
 g_bSpectating <- false;
+g_iLastMoveTime <- 0;
+g_isAFK	<- false;
+g_iRoundStartTime <- 0;
 
 g_Logo <- null;
 g_StatsPanel <- null;
@@ -21,6 +25,7 @@ g_StatsPanelGradient <- null;
 g_Team1StatsLabel <- null;
 g_Team2StatsLabel <- null;
 g_SpawnScreenLabel <- null;
+g_SpawnScreenLabel2 <- null;
 g_ScoreLabel <- null;
 g_TimeLabel <- null;
 g_SpeedoLabel <- null;
@@ -58,6 +63,7 @@ class CGame
 {
 	RoundTime = 0;
 	CountdownTime = 0;
+	IsAttacker = false;
 	IsRoundInProgress = false;
 	IsVotingInProgress = false;
 }
@@ -72,7 +78,9 @@ class CSettings
 	RifleAmmo = 0;
 	MolotovAmmo = 0;
 	GrenadeAmmo = 0;
+	BaseballBat = false;
 	MaxPlayers = 0;
+	AFKSlapTime = 0;
 }
 
 function onScriptLoad()
@@ -83,7 +91,11 @@ function onScriptLoad()
 	
 	//BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
 	//BindKey( '9', BINDTYPE_DOWN, "SpectatePlayer_Previous" );
-	
+
+	BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Enemy Spotted!" );
+	BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Need backup!" );
+	BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Follow me!" );
+	BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Incoming!" );
 	//BindKey( '0', BINDTYPE_DOWN, "plus" );
 	//BindKey( '9', BINDTYPE_DOWN, "minus" );
 	
@@ -216,7 +228,7 @@ function ToggleTeamChat()
 		// open
 		g_TeamChatEditbox.Text = "";
 		UnbindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
-		BindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
+		BindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage", "" );
 		g_TeamChatEditbox.Visible = true;
 		g_TeamChatEditbox.Active = true;
 		g_pLocalPlayer.Frozen = true;
@@ -225,16 +237,17 @@ function ToggleTeamChat()
 	{
 		// close
 		g_pLocalPlayer.Frozen = false;
-		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
+		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage", "" );
 		BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
 		g_TeamChatEditbox.Visible = false;
 		g_TeamChatEditbox.Active = false;
 	}
 }
 
-function SendTeamMessage()
+function SendTeamMessage( szText )
 {
-	if (( g_TeamChatEditbox.Visible ) && ( g_TeamChatEditbox.Text.len() > 0 ))
+	if ( szText ) CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, szText );
+	else if (( g_TeamChatEditbox.Visible ) && ( g_TeamChatEditbox.Text.len() > 0 ))
 	{
 		ToggleTeamChat();
 		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, g_TeamChatEditbox.Text );
@@ -252,8 +265,10 @@ function plus()
 	// 180  this is a battle for respect, you cool
 	// 191 how u doin?
 	// 192 how u doin kid
+	// 149//160 for join
+
 	i++;
-	//StopFrontEndTrack();
+	StopFrontEndTrack();
 	PlayFrontEndTrack( i );
 	//PlayFrontEndSound( i );
 	Message( i.tostring());
@@ -261,8 +276,9 @@ function plus()
 function minus()
 {
 	i--;
-	//StopFrontEndTrack();
+	StopFrontEndTrack();
 	PlayFrontEndTrack( i );
+	//PlayFrontEndSound( i );
 	Message( i.tostring());
 }
 
@@ -429,9 +445,11 @@ function Additional_Button_1()
 {
 	g_SelectAdditionalWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
 	
 	g_SelectAdditionalWeaponButton1.Alpha = 100;
 	g_SelectAdditionalWeaponButton2.Alpha = 20;
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 20;
 	
 	g_AdditionalWeapon = 11;
 }
@@ -440,11 +458,26 @@ function Additional_Button_2()
 {
 	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
 	
 	g_SelectAdditionalWeaponButton1.Alpha = 20;
 	g_SelectAdditionalWeaponButton2.Alpha = 100;
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 20;
 	
 	g_AdditionalWeapon = 10;
+}
+
+function Additional_Button_3()
+{
+	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
+	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = GUI_THEME_MAIN_COLOR;
+	
+	g_SelectAdditionalWeaponButton1.Alpha = 20;
+	g_SelectAdditionalWeaponButton2.Alpha = 20;
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 100;
+	
+	g_AdditionalWeapon = 1;
 }
 
 function OK_Button()
@@ -463,7 +496,7 @@ function OK_Button()
 }
 
 function ShowWeaponsSelectMenu()
-{	
+{
 	ShowMouseCursor( true );
 	ToggleCameraMovement( false );
 	BindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
@@ -595,6 +628,20 @@ function ShowWeaponsSelectMenu()
 		g_SelectAdditionalWeaponButton2.SetCallbackFunc( Additional_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton2 );
 		
+		if ( pSettings.BaseballBat )
+		{
+			g_SelectAdditionalWeaponButton3 = GUIButton( VectorScreen( 320, 78 ), ScreenSize( 150, 10 ), "Baseball Bat" );
+			g_SelectAdditionalWeaponButton3.TextColour = Colour( 255, 255, 255 );
+			g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
+			g_SelectAdditionalWeaponButton3.Alpha = 20;
+			//g_SelectAdditionalWeaponButton3.Flags = FLAG_SHADOW;
+			g_SelectAdditionalWeaponButton3.Visible = true;
+			g_SelectAdditionalWeaponButton3.FontName = "Tahoma";
+			g_SelectAdditionalWeaponButton3.FontSize = 8;
+			g_SelectAdditionalWeaponButton3.SetCallbackFunc( Additional_Button_3 );
+			g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton3 );
+		}
+		
 		g_SelectOKButton = GUIButton( VectorScreen( 10, 125 ), ScreenSize( 460, 10 ), "OK" );
 		g_SelectOKButton.TextColour = Colour( 255, 255, 255 );
 		g_SelectOKButton.Colour = Colour( 0, 0, 0 );
@@ -615,7 +662,7 @@ function UpdateTeamNames( szTeam1Name, szTeam2Name )
 	g_Team2StatsLabel.Text = szTeam2Name;
 }
 
-function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, MaxPlayers )
+function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, MaxPlayers, AFKSlapTime )
 {
 	pSettings.ColtAmmo = ColtAmmo;
 	pSettings.UZIAmmo = UZIAmmo;
@@ -625,7 +672,9 @@ function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleA
 	pSettings.RifleAmmo = RifleAmmo;
 	pSettings.MolotovAmmo = MolotovAmmo;
 	pSettings.GrenadeAmmo = GrenadeAmmo;
+	pSettings.BaseballBat = BaseballBat;
 	pSettings.MaxPlayers = MaxPlayers;
+	pSettings.AFKSlapTime = AFKSlapTime;
 }
 
 function UpdateScores( iTeam1Score, iTeam2Score )
@@ -662,14 +711,14 @@ function SetSpawnClass( szName )
 {
 	if ( !g_SpawnScreenLabel )
 	{
-		g_SpawnScreenLabel = GUILabel( VectorScreen( ScreenWidth/2-10, ScreenHeight/2 ), ScreenSize( 0, 0 ), " " );
+		g_SpawnScreenLabel = GUILabel( VectorScreen( ScreenWidth/2, ScreenHeight-50 ), ScreenSize( 0, 0 ), " " );
 		//g_SpawnScreenLabel.TextColour = Colour( 255, 255, 255 );
 		g_SpawnScreenLabel.Flags = FLAG_COLOURING;
 		g_SpawnScreenLabel.Visible = true;
 		g_SpawnScreenLabel.FontName = "Veranda";
 		g_SpawnScreenLabel.FontSize = 16;
 		g_SpawnScreenLabel.FontTags = TAG_BOLD;
-		//g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
+		g_SpawnScreenLabel.TextAlignment = ALIGN_MIDDLE_CENTER;
 		AddGUILayer( g_SpawnScreenLabel );
 	}
 
@@ -702,19 +751,42 @@ function TimeProcess()
 			ShowWeaponsSelectMenu();
 			SetHUDEnabled( true );
 			RestoreCamera();
+			StopFrontEndTrack();
 			
 			BigMessage( "Fight!", 1500, 3 )
 		}
+		
+		if ( pSettings.AFKSlapTime && ( g_iLastMoveTime - pGame.RoundTime  > pSettings.AFKSlapTime ) && ( pGame.IsAttacker ) && ( g_isAFK )) Slap();
 	}
-	else
-	{
-		UpdateClock();
-	}
+	else UpdateClock();
 }
 
-function onBaseStart( iRoundTime, iMarkerID )
+function Slap()
+{	
+	if ( !g_pLocalPlayer.Vehicle )
+	{
+		local vPosition = g_pLocalPlayer.Pos;
+		if ( g_pLocalPlayer.Health > 5 )
+		{
+			g_pLocalPlayer.Health -= 5;
+			g_pLocalPlayer.Pos = Vector( vPosition.x, vPosition.y, vPosition.z + 2.0 );
+		}
+		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER );
+	}
+	else if ( g_pLocalPlayer.Name == g_pLocalPlayer.Vehicle.Driver.Name )
+	{
+		if ( g_pLocalPlayer.Health > 5 ) g_pLocalPlayer.Health -= 5;
+		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER );
+	}
+	PlayFrontEndSound( 53 );
+	Message( "[#ff0000][Slap!] [#00ff00]Go the base showed on radar!", Colour( 255, 255, 255 ));
+}
+
+function onBaseStart( iRoundTime, iMarkerID, isAttacker )
 {
 	ClearMessages();
+	if ( !SETTING_MUTE ) PlayFrontEndTrack( 16 );
+	if ( isAttacker ) pGame.IsAttacker = true;
 	g_iGameState = 1;
 	g_pLocalPlayer.Frozen = true;
 	g_pMarker = FindSphere( iMarkerID );
@@ -726,19 +798,28 @@ function onBaseStart( iRoundTime, iMarkerID )
 	if ( pGame.IsVotingInProgress ) EndVote();
 	
 	pGame.RoundTime = iRoundTime;
+	g_iRoundStartTime = pGame.RoundTime;
+	g_iLastMoveTime = pGame.RoundTime - 10;
 	pGame.IsRoundInProgress = true;
 }
 
-function onBaseEnd( iTeam1Score, iTeam2Score )
+function onBaseEnd( iTeam1Score, iTeam2Score, isSpawned, isWinner )
 {
 	UpdateScores( iTeam1Score, iTeam2Score );
+	StopFrontEndTrack();
 	g_iGameState = 0;
 	pGame.RoundTime = 0;
 	pGame.CountdownTime = 0;
+	pGame.IsAttacker = true;
 	pGame.IsRoundInProgress = false;
+	
+	if ( isWinner && !SETTING_MUTE ) PlayFrontEndTrack( 93 );
 
-	FadeCamera( 2, true );
-	RestoreCamera();
+	if ( isSpawned )
+	{
+		FadeCamera( 2, true );
+		RestoreCamera();
+	}
 	
 	if ( g_SelectWeaponWindow.Visible )
 	{
@@ -896,6 +977,7 @@ function GetPartReasonFromID( iReasonID )
 function onPlayerJoin( pPlayer )
 {
 	Message( "* " + pPlayer.Name + " has joined the game! (ID: " + pPlayer.ID + ")", Colour( 255, 255, 0 ));
+	if ( !SETTING_MUTE ) PlayFrontEndSound( 191 );
 	
 	return 0;
 }
@@ -925,19 +1007,26 @@ function onClientVehicleShot( pVehicle, pPlayer, iWeaponID )
 
 function onClientShot( pPlayer, iWeaponID, iBodypartID )
 {
-	if (( !g_pLocalPlayer.Immune ) && ( pPlayer.Team != g_pLocalPlayer.Team ))
+	if (( !g_pLocalPlayer.Immune ) && ( pPlayer.Team != g_pLocalPlayer.Team ) && ( g_pLocalPlayer.Health >= 1 ))
 	{
 		if ( iWeaponID == 2 ) 
 		{
 			if ( g_pLocalPlayer.Health > 20 ) g_pLocalPlayer.Health -= 20;
-			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer );
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 2 );
 			
 			return 0;
 		}
 		else if ( iWeaponID == 6 )
 		{
 			if ( g_pLocalPlayer.Health > 7 ) g_pLocalPlayer.Health -= 7;
-			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer );
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 6 );
+			
+			return 0;
+		}
+		else if ( iWeaponID == 7 )
+		{
+			if ( g_pLocalPlayer.Health > 60 ) g_pLocalPlayer.Health -= 60;
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 7 );
 			
 			return 0;
 		}
@@ -996,40 +1085,54 @@ function onClientRender()
 	
 	return 1;
 }
-	
+
+function onClientKeyStateChange( iOldKeys, iNewKeys )
+{
+	if ( iNewKeys > 0 ) g_isAFK = false;
+	else g_isAFK = true;
+	g_iLastMoveTime = pGame.RoundTime;
+}
+
 function onClientCommand( szCommand, szText )
 {
-	/*if ( szCommand == "track" ) PlayFrontEndTrack( szText.tointeger() );
-	else if ( szCommand == "snd" ) PlayFrontEndSound( szText.tointeger() );
-	else if ( szCommand == "shake" ) ShakeCamera( szText.tointeger() );*/
+	//if ( szCommand == "track" ) PlayFrontEndTrack( szText.tointeger() );
+	//else if ( szCommand == "shake" ) ShakeCamera( szText.tointeger() );
+	//else if ( szCommand == "snd" ) i = szText.tointeger();
+	
 	if ( szCommand == "fix" )
 	{
 		ShowMouseCursor( false );
 		RestoreCamera();
 		ToggleCameraMovement( true );
 	}
+	
 	else if ( szCommand == "fix2" )
 	{
 		ShowMouseCursor( true );
 		RestoreCamera();
 		ToggleCameraMovement( true );
 	}
+	else if (( szCommand == "wep" ) || ( szCommand == "weps" ) || ( szCommand == "weapons" ))
+	{
+		if ( !pGame.IsRoundInProgress ) return 0;
+		if ( g_iRoundStartTime - pGame.RoundTime <= 30 ) ShowWeaponsSelectMenu();
+		else Message( "This command is avaliable only for 30secs after start.", Colour( 255, 255, 0 ));
+	}
 	else if ( szCommand == "radio" )
 	{
-		if ( szText == "off" ) StopFrontEndTrack();
+		if ( !szText ) Message( "Use [#00ff00]/radio <1-8>[#ffff00] or [#00ff00]/radio off", Colour( 255, 255, 0 ));
+		else if ( szText == "off" ) StopFrontEndTrack();
 		else
 		{
 			local iFM = szText.tointeger();
 			if (( iFM <= 8 ) && ( iFM >= 0 )) PlayFrontEndTrack( iFM );
 		}
 	}
-	else if ( szCommand == "mutesfx" )
+	else if ( szCommand == "sfx" )
 	{
-		SETTING_MUTE = true;
-	}
-	else if ( szCommand == "unmutesfx" )
-	{
-		SETTING_MUTE = false;
+		if ( !szText ) Message( "Use [#00ff00]/sfx on [#ffff00]or [#00ff00]/sfx off", Colour( 255, 255, 0 ));
+		else if ( szText == "on" ) SETTING_MUTE = false;
+		else if ( szText == "off" ) SETTING_MUTE = true;
 	}
 	return 1;
 }
