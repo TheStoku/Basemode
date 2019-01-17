@@ -410,7 +410,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "info" )
 	{
-		MessagePlayer( "[#ffffff]*********** Basemode - Info ***********" pPlayer );
+		MessagePlayer( "[#ffffff]*********** Basemode - Info ***********", pPlayer );
 		MessagePlayer( "[#ffffff]Basemode v" + SCRIPT_VERSION + " by Stoku", pPlayer );
 		if ( pGame.IsRoundInProgress ) MessagePlayer( "[#ffff00]Base n ame: [#ffffff]" + pBase.Name + "[#ffff00]" + "Author:[#ffffff]" + pBase.Author + "[#ffff00]Attackers spawn ID: [#ffffff]" + pBase.SpawnID + "[#ffff00]Round Time: [#ffffff]" + pBase.RoundTime + "[#ffff00]Weather: [#ffffff]" + pBase.Weather + "[#ffff00]Hour: [#ffffff]" + pBase.Hour + ":00", pPlayer );
 		MessagePlayer( "[#ffffff] Team 1: [#ff0000] " + pPlayerManager.GetTeamFullName( 0 ) + " - score: " + pPlayerManager.Team1Score, pPlayer );
