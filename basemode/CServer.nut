@@ -96,7 +96,7 @@ class CPlayerClass
 	}
 	function Spawn()
 	{
-		if ( TEAM_BALANCE_DIFFERENCE && !pPlayerManager.CheckBalance( this.Instance, this.Instance.Team )) return;
+		if ( TEAM_BALANCE_DIFFERENCE ) pPlayerManager.CheckBalance( this.Instance, this.Instance.Team );
 		
 		this.Instance.Immune = true;
 		pPlayerManager.CountPlayers();
@@ -599,7 +599,7 @@ class CPlayerManager
 				CPlayer[ pPlayer.ID ].SwitchTeam();
 				MessagePlayer( "[#ff0000]There are too many players in selected team.", pPlayer );
 				Message( "[#00ff00]Team balancer has moved " + pPlayer.Name + " to " + pPlayerManager.GetTeamName( pPlayer.Team ) + " team." );
-				if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
+				//if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
 			}
 			else return 1;
 		}
