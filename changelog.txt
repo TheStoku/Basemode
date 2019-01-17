@@ -1,5 +1,29 @@
 History:
 
+1.0-RC5:
+- added nickname limit to 23 chars by default (definable as MAX_NICK_LENGHT in config.nut)
+- added nickname colour removing, so there are only red and blue players
+- disabled players using bug and joining without nicknames
+- increased Sniper Rifle damage to 60hp (there's a poll on forum, so you can decide)
+- anti AFK system for attackers (configurable in config.nut)
+- beybinds for team messages: [1]Enemy spotted, [2]Need backup!, [3]Follow me!, [4]Incoming!
+- added music on starting base screen, mission passed music for winners and player join notification
+- reworked command /sfx <on/off> to enable/disable gamemode sounds
+- reworked /music <1-8> or /music off
+- added /wep (/weps or /weapons) command to allow changing weapons (available only for 30 seconds after round start)
+- centered team name label on class selection
+- added anti spam system (configurable in config.nut)
+- added round replay in autoplay (setting AUTOPLAY_ROUND_REPLAY in config.nut)
+- fixed some death reasons
+- fixed reseting capture bug when two players enters the marker
+- added server settings into config.nut (server name, max players, port, password)
+- redone lobby spawning (settings are moved to config.nut: lobby_spawn_pos, lobby_spawn_angle)
+- added /switch command in lobby to change team
+- added simple team balancer (setting TEAM_BALANCE_DIFFERENCE in config.nut)
+- added weather/hour setting for lobby
+- deleted garbage and some unused stuff
+- added baseball bat as additional weapon
+
 1.0-RC4:
 - synced more features from BasemodeVC (spawnscreen team name label)
 - added config.nut configuration file and moved there most of script settings
