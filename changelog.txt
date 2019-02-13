@@ -1,12 +1,25 @@
 History:
 
+1.0 Final:
+- fixed fast messages spamming when teamchat open
+- fixed antiafk killing defence
+- fixed teamchat on [Enter] key and added new messages
+- fixed "mission passed" song in some cases
+- added "empty" weapons
+- added sound on player join
+- fixed radio not being played in cars
+- fixed /kill, which now forces spawnscreen
+- fixed script reloading (no need to reconnect anymore)
+- fixed SSV bridge
+
+
 1.0-RC5:
 - added nickname limit to 23 chars by default (definable as MAX_NICK_LENGHT in config.nut)
 - added nickname colour removing, so there are only red and blue players
 - disabled players using bug and joining without nicknames
 - increased Sniper Rifle damage to 60hp (there's a poll on forum, so you can decide)
 - anti AFK system for attackers (configurable in config.nut)
-- beybinds for team messages: [1]Enemy spotted, [2]Need backup!, [3]Follow me!, [4]Incoming!
+- keybinds for team messages: [1]Enemy spotted, [2]Need backup!, [3]Follow me!, [4]Incoming!
 - added music on starting base screen, mission passed music for winners and player join notification
 - reworked command /sfx <on/off> to enable/disable gamemode sounds
 - reworked /music <1-8> or /music off
