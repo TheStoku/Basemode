@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC5 by Stoku						# */
+/* #			BaseMode v1.0 final by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-SCRIPT_VERSION					<- "1.0-RC5";
+SCRIPT_VERSION					<- "1.0 final";
 local SCRIPT_AUTHOR				= "Stoku";
 
 SCRIPT_DIR						<- "Scripts/basemode/";
@@ -67,16 +67,47 @@ function Load()
 	
 	g_CaptureTimer = NewTimer( "CaptureTimeProcess", 1000, 0 );
 	g_CaptureTimer.Stop();
+
+	// On script reload
+	if ( ReadIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading" ) )
+	{
+		local iPlayersCount = GetMaxPlayers();
+		for( local iPlayerID = 0; iPlayerID < iPlayersCount; iPlayerID++ )
+		{
+			local pPlayer = FindPlayer( iPlayerID );	
+			if ( pPlayer )
+			{
+				onPlayerJoin( pPlayer );
+				if ( pPlayer.Spawned ) CPlayer[ pPlayer.ID ].Spawn();
+			}
+		}
+		
+		pPlayerManager.Team1Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1" );
+		pPlayerManager.Team2Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2" );
+		
+		WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", false );
+	}
+	
+	return 1;
+}
+
+function onScriptUnload()
+{
+	WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", true );
+	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1", pPlayerManager.GetTeamWins( 0 ) );
+	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2", pPlayerManager.GetTeamWins( 1 ) );
+	Message( "Script reloading..." );
 	
 	return 1;
 }
 
 function GiveWeapons( pPlayer, iPrimaryWeapon, iSecondaryWeapon, iAdditionalWeapon )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	pPlayer.ClearWeapons();
-	pPlayer.SetWeapon( iAdditionalWeapon, pSettings.GetAmmoFromWeaponID( iAdditionalWeapon ));
-	pPlayer.SetWeapon( iPrimaryWeapon, pSettings.GetAmmoFromWeaponID( iPrimaryWeapon ));
-	pPlayer.SetWeapon( iSecondaryWeapon, pSettings.GetAmmoFromWeaponID( iSecondaryWeapon ));
+	if ( iAdditionalWeapon != 255 ) pPlayer.SetWeapon( iAdditionalWeapon, pSettings.GetAmmoFromWeaponID( iAdditionalWeapon ));
+	else if ( iPrimaryWeapon != 255 ) pPlayer.SetWeapon( iPrimaryWeapon, pSettings.GetAmmoFromWeaponID( iPrimaryWeapon ));
+	else if ( iSecondaryWeapon != 255 ) pPlayer.SetWeapon( iSecondaryWeapon, pSettings.GetAmmoFromWeaponID( iSecondaryWeapon ));
 }
 
 function Vote( pPlayer, bBoolean )
@@ -207,7 +238,7 @@ function onPlayerJoin( pPlayer )
 	if ( ROUNDSTART_TYPE == 0 ) MessagePlayer( "[#FFFF00]The server is script controlled. The base will start automatically.", pPlayer );
 	else if ( ROUNDSTART_TYPE == 1 ) MessagePlayer( "[#FFFF00]The server is vote controlled. Use [#00FF00]/votebase [#FFFF00]to start voting!", pPlayer );
 	else if ( ROUNDSTART_TYPE == 2 ) MessagePlayer( "[#FFFF00]The server is admin controlled. Bases are started by admin.", pPlayer );
-	MessagePlayer( "[#FFFF00]If you need more info, use [#00FF00]/help", pPlayer );
+	MessagePlayer( "[#FFFF00]If you need more info, use [#00FF00]/help or F1", pPlayer );
 	
 	pSettings.UpdateClientSettings( pPlayer );
 	
@@ -249,10 +280,16 @@ function onPlayerDeath( pPlayer, iReason )
 	else if ( iReason == WEP_EXPLOSION ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Explosion).", 255, 255, 0 );
 	else if ( iReason == WEP_DROWNED ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Drowned)", 255, 255, 0 );
 	else if ( iReason == WEP_FALL ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Fall).", 255, 255, 0 );
-	else if ( iReason == WEP_FLAMETHROWER || WEP_MOLOTOV ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Fire).", 255, 255, 0 );
+	else if ( iReason == 9 ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Fire).", 255, 255, 0 );
 	else if ( iReason == WEP_AFK_KILLER_REASON ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Anti AFK kill system).", 255, 255, 0 );
-	else if ( iReason != 255 ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Unknown: " + iReason + ").", 255, 255, 0 );
+	else if ( iReason == 125 )
+	{
+		Message( "[#ffff00]" + pPlayer.Name + " killed himself." );
+		pPlayer.ForceToSpawnScreen();
+	}
+	else Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Unknown: " + iReason + ").", 255, 255, 0 );
 	
+	pPlayerManager.CountPlayers();
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
 	
@@ -419,13 +456,9 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	else if ( szCommand == "kill" )
 	{
 		if (( iRoundStartTime < 3 ) && ( ROUNDSTART_TYPE == 0 )) MessagePlayer( "*** You can't use kill when it's less than 3 seconds before base start.", pPlayer );
-		else 
+		else if ( pPlayer.Health > 1 && pPlayer.Spawned )
 		{
-			Message( pPlayer.Name + " killed himself." );
-			pPlayer.Health = 0;
-			pPlayerManager.DeleteTeam( pPlayer );
-			pPlayerManager.CountPlayers();
-			pPlayerManager.CheckWinner();
+			onPlayerDeath( pPlayer, 125 );
 		}
 	}
 	else if ( szCommand == "t" )
@@ -449,11 +482,12 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	}
 	else if ( szCommand == "switch" )
 	{
-		if ( CPlayer[ pPlayer.ID ].SwitchTeam() )
+		pPlayer.ForceToSpawnScreen();
+		/*if ( CPlayer[ pPlayer.ID ].SwitchTeam() )
 		{
 			Message( "[#ffffff]*** " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffffff] has switched his team to " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayerManager.GetTeamName( pPlayer.Team ) + "[#ffffff]." );
 			if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
-		}
+		}*/
 	}
 	
 	
@@ -478,7 +512,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		if ( !CheckModerator( pPlayer )) return 0;
 		if ( !szText )
 		{
-			MessagePlayer ( "[#ffff00][Syntax] [#ffffff]/add <player>.", pPlayer );
+			MessagePlayer ( "[#ffff00][Syntax] [#ffffff]/del <player>.", pPlayer );
 			return 0;
 		}
 		local pDeletedPlayer = FindPlayer( szText );
@@ -498,7 +532,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			MessagePlayer ( "[#ff0000]Error: Player not found.", pPlayer );
 			return 0;
 		}
-		if ( pTargetPlayer )
+		else if ( pTargetPlayer )
 		{
 			BanPlayer ( pTargetPlayer , BANTYPE_LUID );
 			Message( "[#00ff00]Administrator " + pPlayer + " has banned " + pTargetPlayer );
@@ -528,16 +562,6 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
 		CreateVehicle( szText.tointeger(), pPlayer.Pos, pPlayer.Angle, -1, -1 );
-	}
-	else if ( szCommand == "del" )
-	{
-		if ( !CheckModerator( pPlayer )) return 0;
-		local pDeletedPlayer = FindPlayer( szText );
-		if ( pDeletedPlayer )
-		{
-			pPlayerManager.DeleteTeam( pDeletedPlayer );
-			Message( "[#00ff00]Administrator " + pPlayer + " has deleted " + pDeletedPlayer + " from the round." );
-		}
 	}
 	else if ( szCommand == "end" )
 	{
@@ -671,7 +695,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		else SetPassword( szText );
 		Message( "[#00ff00]Administrator " + pPlayer + " has changed server password." );
 	}
-	else if ( szCommand == "switch" )
+	else if ( szCommand == "switchteams" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
 		pPlayerManager.SwitchTeams();
@@ -707,6 +731,12 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		}
 		SetWeather( szText.tointeger() );
 		Message( "[#00ff00]Administrator " + pPlayer + " has changed weather to " + szText );
+	}
+	else if ( szCommand == "reloadconfig" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		dofile( SCRIPT_DIR + "config.nut" );
+		Message( pPlayer.Name + " has reloaded config.nut" );
 	}
 	
 	// ################ Debug commands #################

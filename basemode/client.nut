@@ -1,9 +1,9 @@
 /* ############################################################## */
-/* #			BaseMode v1.0-RC5 by Stoku						# */
+/* #			BaseMode v1.0 final by Stoku						# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0-RC5";
+local SCRIPT_VERSION			= "1.0 final";
 local SCRIPT_AUTHOR				= "Stoku";
 
 local GUI_THEME_MAIN_COLOR 		= Colour( 0, 255, 0 );
@@ -18,6 +18,9 @@ g_bSpectating <- false;
 g_iLastMoveTime <- 0;
 g_isAFK	<- false;
 g_iRoundStartTime <- 0;
+
+g_HelpWindow <- null;
+g_HelpMemo <- null;
 
 g_Logo <- null;
 g_StatsPanel <- null;
@@ -42,12 +45,15 @@ g_SelectWeaponWindow <- null;
 g_SelectWeaponLabel1 <- null;
 g_SelectWeaponLabel2 <- null;
 g_SelectWeaponLabel3 <- null;
+g_SelectPrimaryWeaponButton0 <- null;
 g_SelectPrimaryWeaponButton1 <- null;
 g_SelectPrimaryWeaponButton2 <- null;
 g_SelectPrimaryWeaponButton3 <- null;
 g_SelectPrimaryWeaponButton4 <- null;
+g_SelectSecondaryWeaponButton0 <- null;
 g_SelectSecondaryWeaponButton1 <- null;
 g_SelectSecondaryWeaponButton2 <- null;
+g_SelectAdditionalWeaponButton0 <- null;
 g_SelectAdditionalWeaponButton1 <- null;
 g_SelectAdditionalWeaponButton2 <- null;
 g_SelectAdditionalWeaponButton3 <- null;
@@ -58,6 +64,9 @@ g_SecondaryWeapon <- null;
 g_AdditionalWeapon <- null;
 
 g_TeamChatEditbox <- null;
+
+g_OwnRadio <- 255;
+g_RandomRadio <- 0;
 
 class CGame
 {
@@ -92,10 +101,14 @@ function onScriptLoad()
 	//BindKey( '0', BINDTYPE_DOWN, "SpectatePlayer_Next" );
 	//BindKey( '9', BINDTYPE_DOWN, "SpectatePlayer_Previous" );
 
+	BindKey( KEY_F1, BINDTYPE_DOWN, "ShowHelpWindow", "1" );
+	BindKey( KEY_F1, BINDTYPE_UP, "ShowHelpWindow", "0" );
 	BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Enemy Spotted!" );
 	BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Need backup!" );
 	BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Follow me!" );
 	BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Incoming!" );
+	BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Go, go, go!" );
+	BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Roger that!" );
 	//BindKey( '0', BINDTYPE_DOWN, "plus" );
 	//BindKey( '9', BINDTYPE_DOWN, "minus" );
 	
@@ -228,6 +241,12 @@ function ToggleTeamChat()
 		// open
 		g_TeamChatEditbox.Text = "";
 		UnbindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
+		UnbindKey( '1', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '2', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '3', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '4', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '5', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '6', BINDTYPE_UP, "SendTeamMessage" );
 		BindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage", "" );
 		g_TeamChatEditbox.Visible = true;
 		g_TeamChatEditbox.Active = true;
@@ -237,8 +256,14 @@ function ToggleTeamChat()
 	{
 		// close
 		g_pLocalPlayer.Frozen = false;
-		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage", "" );
+		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
 		BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
+		BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Enemy Spotted!" );
+		BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Need backup!" );
+		BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Follow me!" );
+		BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Incoming!" );
+		BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Go, go, go!" );
+		BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Roger that!" );
 		g_TeamChatEditbox.Visible = false;
 		g_TeamChatEditbox.Active = false;
 	}
@@ -246,7 +271,11 @@ function ToggleTeamChat()
 
 function SendTeamMessage( szText )
 {
-	if ( szText ) CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, szText );
+	if ( szText )
+	{
+		//ToggleTeamChat();
+		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, szText );
+	}
 	else if (( g_TeamChatEditbox.Visible ) && ( g_TeamChatEditbox.Text.len() > 0 ))
 	{
 		ToggleTeamChat();
@@ -359,13 +388,32 @@ function UpdateVotes( iBaseID, iVoteTime, iYes, iNo )
 	g_VoteNo.Text = "2. No (" + iNo + ")";
 }
 
+function Primary_Button_0()
+{
+	g_SelectPrimaryWeaponButton0.Colour = GUI_THEME_MAIN_COLOR;
+	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
+	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
+	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
+	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
+	
+	g_SelectPrimaryWeaponButton0.Alpha = 100;
+	g_SelectPrimaryWeaponButton1.Alpha = 20;
+	g_SelectPrimaryWeaponButton2.Alpha = 20;
+	g_SelectPrimaryWeaponButton3.Alpha = 20;
+	g_SelectPrimaryWeaponButton4.Alpha = 20;
+	
+	g_PrimaryWeapon = 255;
+}
+
 function Primary_Button_1()
 {
+	g_SelectPrimaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectPrimaryWeaponButton0.Alpha = 20;
 	g_SelectPrimaryWeaponButton1.Alpha = 100;
 	g_SelectPrimaryWeaponButton2.Alpha = 20;
 	g_SelectPrimaryWeaponButton3.Alpha = 20;
@@ -376,11 +424,13 @@ function Primary_Button_1()
 
 function Primary_Button_2()
 {
+	g_SelectPrimaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectPrimaryWeaponButton0.Alpha = 20;
 	g_SelectPrimaryWeaponButton1.Alpha = 20;
 	g_SelectPrimaryWeaponButton2.Alpha = 100;
 	g_SelectPrimaryWeaponButton3.Alpha = 20;
@@ -391,11 +441,13 @@ function Primary_Button_2()
 
 function Primary_Button_3()
 {
+	g_SelectPrimaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton3.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectPrimaryWeaponButton0.Alpha = 20;
 	g_SelectPrimaryWeaponButton1.Alpha = 20;
 	g_SelectPrimaryWeaponButton2.Alpha = 20;
 	g_SelectPrimaryWeaponButton3.Alpha = 100;
@@ -406,11 +458,13 @@ function Primary_Button_3()
 
 function Primary_Button_4()
 {
+	g_SelectPrimaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 	g_SelectPrimaryWeaponButton4.Colour = GUI_THEME_MAIN_COLOR;
 	
+	g_SelectPrimaryWeaponButton0.Alpha = 20;
 	g_SelectPrimaryWeaponButton1.Alpha = 20;
 	g_SelectPrimaryWeaponButton2.Alpha = 20;
 	g_SelectPrimaryWeaponButton3.Alpha = 20;
@@ -419,11 +473,26 @@ function Primary_Button_4()
 	g_PrimaryWeapon = 7;
 }
 
+function Secondary_Button_0()
+{
+	g_SelectSecondaryWeaponButton0.Colour = GUI_THEME_MAIN_COLOR;
+	g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 0, 0 );
+	g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 0, 0 );
+	
+	g_SelectSecondaryWeaponButton0.Alpha = 100;
+	g_SelectSecondaryWeaponButton1.Alpha = 20;
+	g_SelectSecondaryWeaponButton2.Alpha = 20;
+	
+	g_SecondaryWeapon = 255;
+}
+
 function Secondary_Button_1()
 {
+	g_SelectSecondaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectSecondaryWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectSecondaryWeaponButton0.Alpha = 20;
 	g_SelectSecondaryWeaponButton1.Alpha = 100;
 	g_SelectSecondaryWeaponButton2.Alpha = 20;
 	
@@ -432,21 +501,40 @@ function Secondary_Button_1()
 
 function Secondary_Button_2()
 {
+	g_SelectSecondaryWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectSecondaryWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	
+	g_SelectSecondaryWeaponButton0.Alpha = 20;
 	g_SelectSecondaryWeaponButton1.Alpha = 20;
 	g_SelectSecondaryWeaponButton2.Alpha = 100;
 	
 	g_SecondaryWeapon = 3;
 }
 
+function Additional_Button_0()
+{
+	g_SelectAdditionalWeaponButton0.Colour = GUI_THEME_MAIN_COLOR;
+	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
+	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
+	
+	g_SelectAdditionalWeaponButton0.Alpha = 100;
+	g_SelectAdditionalWeaponButton1.Alpha = 20;
+	g_SelectAdditionalWeaponButton2.Alpha = 20;
+	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 20;
+	
+	g_AdditionalWeapon = 255;
+}
+
 function Additional_Button_1()
 {
+	g_SelectAdditionalWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton1.Colour = GUI_THEME_MAIN_COLOR;
 	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectAdditionalWeaponButton0.Alpha = 20;
 	g_SelectAdditionalWeaponButton1.Alpha = 100;
 	g_SelectAdditionalWeaponButton2.Alpha = 20;
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 20;
@@ -456,10 +544,12 @@ function Additional_Button_1()
 
 function Additional_Button_2()
 {
+	g_SelectAdditionalWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton2.Colour = GUI_THEME_MAIN_COLOR;
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
 	
+	g_SelectAdditionalWeaponButton0.Alpha = 20;
 	g_SelectAdditionalWeaponButton1.Alpha = 20;
 	g_SelectAdditionalWeaponButton2.Alpha = 100;
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 20;
@@ -469,10 +559,12 @@ function Additional_Button_2()
 
 function Additional_Button_3()
 {
+	g_SelectAdditionalWeaponButton0.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
 	g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Colour = GUI_THEME_MAIN_COLOR;
 	
+	g_SelectAdditionalWeaponButton0.Alpha = 20;
 	g_SelectAdditionalWeaponButton1.Alpha = 20;
 	g_SelectAdditionalWeaponButton2.Alpha = 20;
 	if ( pSettings.BaseballBat ) g_SelectAdditionalWeaponButton3.Alpha = 100;
@@ -489,7 +581,7 @@ function OK_Button()
 		ToggleCameraMovement( true );
 		g_pLocalPlayer.Frozen = false;
 		g_SelectWeaponWindow.Visible = false;
-		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
+		//UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
 		
 		if ( pGame.IsRoundInProgress ) CallServerFunc( "basemode/server.nut", "GiveWeapons", g_pLocalPlayer, g_PrimaryWeapon, g_SecondaryWeapon, g_AdditionalWeapon );
 	}
@@ -499,11 +591,11 @@ function ShowWeaponsSelectMenu()
 {
 	ShowMouseCursor( true );
 	ToggleCameraMovement( false );
-	BindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
+	//BindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
 	
 	if ( !g_SelectWeaponWindow )
 	{
-		g_SelectWeaponWindow = GUIWindow( VectorScreen( ScreenWidth/2-250, ScreenHeight/2-75 ), ScreenSize( 480, 150 ), "Please select your weapons:" );
+		g_SelectWeaponWindow = GUIWindow( VectorScreen( ScreenWidth/2-250, ScreenHeight/2-80 ), ScreenSize( 480, 170 ), "Please select your weapons:" );
 		g_SelectWeaponWindow.Colour = Colour( 0, 0, 0 );
 		g_SelectWeaponWindow.Titlebar = true;
 		g_SelectWeaponWindow.Alpha = 100;
@@ -540,7 +632,18 @@ function ShowWeaponsSelectMenu()
 		//g_SelectWeaponLabel3.TextAlignment = ALIGN_MIDDLE_CENTER;
 		g_SelectWeaponWindow.AddChild( g_SelectWeaponLabel3 );
 		
-		g_SelectPrimaryWeaponButton1 = GUIButton( VectorScreen( 10, 40 ), ScreenSize( 150, 10 ), "AK-47 / " + pSettings.AKAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton0 = GUIButton( VectorScreen( 10, 40 ), ScreenSize( 150, 10 ), "Empty" );
+		g_SelectPrimaryWeaponButton0.TextColour = Colour( 255, 255, 255 );
+		g_SelectPrimaryWeaponButton0.Colour = Colour( 0, 0, 0 );
+		g_SelectPrimaryWeaponButton0.Alpha = 20;
+		//g_SelectPrimaryWeaponButton0.Flags = FLAG_SHADOW;
+		g_SelectPrimaryWeaponButton0.Visible = true;
+		g_SelectPrimaryWeaponButton0.FontName = "Tahoma";
+		g_SelectPrimaryWeaponButton0.FontSize = 8;
+		g_SelectPrimaryWeaponButton0.SetCallbackFunc( Primary_Button_0 );
+		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton0 );
+		
+		g_SelectPrimaryWeaponButton1 = GUIButton( VectorScreen( 10, 60 ), ScreenSize( 150, 10 ), "AK-47 / " + pSettings.AKAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton1.Alpha = 20;
@@ -551,7 +654,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton1.SetCallbackFunc( Primary_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton1 );
 		
-		g_SelectPrimaryWeaponButton2 = GUIButton( VectorScreen( 10, 59 ), ScreenSize( 150, 10 ), "M16 / " + pSettings.M16Ammo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton2 = GUIButton( VectorScreen( 10, 80 ), ScreenSize( 150, 10 ), "M16 / " + pSettings.M16Ammo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton2.Alpha = 20;
@@ -562,7 +665,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton2.SetCallbackFunc( Primary_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton2 );
 		
-		g_SelectPrimaryWeaponButton3 = GUIButton( VectorScreen( 10, 78 ), ScreenSize( 150, 10 ), "Shotgun / " + pSettings.ShotgunAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton3 = GUIButton( VectorScreen( 10, 100 ), ScreenSize( 150, 10 ), "Shotgun / " + pSettings.ShotgunAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton3.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton3.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton3.Alpha = 20;
@@ -573,7 +676,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton3.SetCallbackFunc( Primary_Button_3 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton3 );
 		
-		g_SelectPrimaryWeaponButton4 = GUIButton( VectorScreen( 10, 97 ), ScreenSize( 150, 10 ), "Rifle / " + pSettings.RifleAmmo.tostring() + " ammo" );
+		g_SelectPrimaryWeaponButton4 = GUIButton( VectorScreen( 10, 120 ), ScreenSize( 150, 10 ), "Rifle / " + pSettings.RifleAmmo.tostring() + " ammo" );
 		g_SelectPrimaryWeaponButton4.TextColour = Colour( 255, 255, 255 );
 		g_SelectPrimaryWeaponButton4.Colour = Colour( 0, 0, 0 );
 		g_SelectPrimaryWeaponButton4.Alpha = 20;
@@ -584,7 +687,18 @@ function ShowWeaponsSelectMenu()
 		g_SelectPrimaryWeaponButton4.SetCallbackFunc( Primary_Button_4 );
 		g_SelectWeaponWindow.AddChild( g_SelectPrimaryWeaponButton4 );
 		
-		g_SelectSecondaryWeaponButton1 = GUIButton( VectorScreen( 165, 40 ), ScreenSize( 150, 10 ), "Colt 45 / " + pSettings.ColtAmmo.tostring() + " ammo" );
+		g_SelectSecondaryWeaponButton0 = GUIButton( VectorScreen( 165, 40 ), ScreenSize( 150, 10 ), "Empty" );
+		g_SelectSecondaryWeaponButton0.TextColour = Colour( 255, 255, 255 );
+		g_SelectSecondaryWeaponButton0.Colour = Colour( 0, 0, 0 );
+		g_SelectSecondaryWeaponButton0.Alpha = 20;
+		//g_SelectSecondaryWeaponButton0.Flags = FLAG_SHADOW;
+		g_SelectSecondaryWeaponButton0.Visible = true;
+		g_SelectSecondaryWeaponButton0.FontName = "Tahoma";
+		g_SelectSecondaryWeaponButton0.FontSize = 8;
+		g_SelectSecondaryWeaponButton0.SetCallbackFunc( Secondary_Button_0 );
+		g_SelectWeaponWindow.AddChild( g_SelectSecondaryWeaponButton0 );
+		
+		g_SelectSecondaryWeaponButton1 = GUIButton( VectorScreen( 165, 60 ), ScreenSize( 150, 10 ), "Colt 45 / " + pSettings.ColtAmmo.tostring() + " ammo" );
 		g_SelectSecondaryWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectSecondaryWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectSecondaryWeaponButton1.Alpha = 20;
@@ -595,7 +709,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectSecondaryWeaponButton1.SetCallbackFunc( Secondary_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectSecondaryWeaponButton1 );	
 		
-		g_SelectSecondaryWeaponButton2 = GUIButton( VectorScreen( 165, 59 ), ScreenSize( 150, 10 ), "UZI / " + pSettings.UZIAmmo.tostring() + " ammo" );
+		g_SelectSecondaryWeaponButton2 = GUIButton( VectorScreen( 165, 80 ), ScreenSize( 150, 10 ), "UZI / " + pSettings.UZIAmmo.tostring() + " ammo" );
 		g_SelectSecondaryWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectSecondaryWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectSecondaryWeaponButton2.Alpha = 20;
@@ -606,7 +720,18 @@ function ShowWeaponsSelectMenu()
 		g_SelectSecondaryWeaponButton2.SetCallbackFunc( Secondary_Button_2 );
 		g_SelectWeaponWindow.AddChild( g_SelectSecondaryWeaponButton2 );
 		
-		g_SelectAdditionalWeaponButton1 = GUIButton( VectorScreen( 320, 40 ), ScreenSize( 150, 10 ), "Grenade / " + pSettings.GrenadeAmmo.tostring() + " pcs." );
+		g_SelectAdditionalWeaponButton0 = GUIButton( VectorScreen( 320, 40 ), ScreenSize( 150, 10 ), "Empty" );
+		g_SelectAdditionalWeaponButton0.TextColour = Colour( 255, 255, 255 );
+		g_SelectAdditionalWeaponButton0.Colour = Colour( 0, 0, 0 );
+		g_SelectAdditionalWeaponButton0.Alpha = 20;
+		//g_SelectAdditionalWeaponButton0.Flags = FLAG_SHADOW;
+		g_SelectAdditionalWeaponButton0.Visible = true;
+		g_SelectAdditionalWeaponButton0.FontName = "Tahoma";
+		g_SelectAdditionalWeaponButton0.FontSize = 8;
+		g_SelectAdditionalWeaponButton0.SetCallbackFunc( Additional_Button_0 );
+		g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton0 );
+		
+		g_SelectAdditionalWeaponButton1 = GUIButton( VectorScreen( 320, 60 ), ScreenSize( 150, 10 ), "Grenade / " + pSettings.GrenadeAmmo.tostring() + " pcs." );
 		g_SelectAdditionalWeaponButton1.TextColour = Colour( 255, 255, 255 );
 		g_SelectAdditionalWeaponButton1.Colour = Colour( 0, 0, 0 );
 		g_SelectAdditionalWeaponButton1.Alpha = 20;
@@ -617,7 +742,7 @@ function ShowWeaponsSelectMenu()
 		g_SelectAdditionalWeaponButton1.SetCallbackFunc( Additional_Button_1 );
 		g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton1 );
 		
-		g_SelectAdditionalWeaponButton2 = GUIButton( VectorScreen( 320, 59 ), ScreenSize( 150, 10 ), "Molotov / " + pSettings.MolotovAmmo.tostring() + " pcs." );
+		g_SelectAdditionalWeaponButton2 = GUIButton( VectorScreen( 320, 80 ), ScreenSize( 150, 10 ), "Molotov / " + pSettings.MolotovAmmo.tostring() + " pcs." );
 		g_SelectAdditionalWeaponButton2.TextColour = Colour( 255, 255, 255 );
 		g_SelectAdditionalWeaponButton2.Colour = Colour( 0, 0, 0 );
 		g_SelectAdditionalWeaponButton2.Alpha = 20;
@@ -630,7 +755,7 @@ function ShowWeaponsSelectMenu()
 		
 		if ( pSettings.BaseballBat )
 		{
-			g_SelectAdditionalWeaponButton3 = GUIButton( VectorScreen( 320, 78 ), ScreenSize( 150, 10 ), "Baseball Bat" );
+			g_SelectAdditionalWeaponButton3 = GUIButton( VectorScreen( 320, 100 ), ScreenSize( 150, 10 ), "Baseball Bat" );
 			g_SelectAdditionalWeaponButton3.TextColour = Colour( 255, 255, 255 );
 			g_SelectAdditionalWeaponButton3.Colour = Colour( 0, 0, 0 );
 			g_SelectAdditionalWeaponButton3.Alpha = 20;
@@ -642,7 +767,7 @@ function ShowWeaponsSelectMenu()
 			g_SelectWeaponWindow.AddChild( g_SelectAdditionalWeaponButton3 );
 		}
 		
-		g_SelectOKButton = GUIButton( VectorScreen( 10, 125 ), ScreenSize( 460, 10 ), "OK" );
+		g_SelectOKButton = GUIButton( VectorScreen( 10, 145 ), ScreenSize( 460, 10 ), "OK" );
 		g_SelectOKButton.TextColour = Colour( 255, 255, 255 );
 		g_SelectOKButton.Colour = Colour( 0, 0, 0 );
 		g_SelectOKButton.Alpha = 20;
@@ -654,6 +779,52 @@ function ShowWeaponsSelectMenu()
 		g_SelectWeaponWindow.AddChild( g_SelectOKButton );
 	}
 	else g_SelectWeaponWindow.Visible = true;
+}
+
+function ShowHelpWindow( bShow )
+{
+	if ( bShow.tointeger() )
+	{
+		if ( !g_HelpWindow && bShow.tointeger())
+		{
+			g_HelpWindow = GUIWindow( VectorScreen( ScreenWidth/2-300, ScreenHeight/2-150 ), ScreenSize( 600, 280 ), "Basemode help" );
+			g_HelpWindow.Colour = Colour( 0, 0, 0 );
+			g_HelpWindow.Titlebar = true;
+			g_HelpWindow.Alpha = 200;
+			g_HelpWindow.Visible = true;
+			AddGUILayer( g_HelpWindow );
+			
+			g_HelpMemo = GUIMemobox( VectorScreen( 5, 0 ), ScreenSize( 590, 280 ));
+			g_HelpMemo.TextColour = Colour( 255, 255, 255 );
+			g_HelpMemo.FontSize = 9;
+			g_HelpMemo.Lines = 19;
+			g_HelpMemo.Flags = FLAG_COLOURING;
+			
+			g_HelpMemo.AddLine("[#ffff00]Goals:");
+			g_HelpMemo.AddLine("Defending team have to defend the marker for 8 minutes or kill attackers.");
+			g_HelpMemo.AddLine("Attacking team have 8 mins to capture the base or kill defenders.");
+			g_HelpMemo.AddLine("");
+			g_HelpMemo.AddLine("[#ffff00]Client commands:");
+			g_HelpMemo.AddLine("[#00ff00]/fix[#ffffff] - hide mouse cursor and restore camera");
+			g_HelpMemo.AddLine("[#00ff00]/fix2[#ffffff] - show mouse cursor and restore camera");
+			g_HelpMemo.AddLine("[#00ff00]/radio <id 0-8/off>[#ffffff] - turn on/off the radio");
+			g_HelpMemo.AddLine("[#00ff00]/sfx <on/off>[#ffffff] - turn on/off sound effects");
+			g_HelpMemo.AddLine("");
+			g_HelpMemo.AddLine("[#ffff00]Keybinds:");
+			g_HelpMemo.AddLine("[#00ff00]Y[#ffffff] - Open teamchat.");
+			g_HelpMemo.AddLine("[#00ff00]Enter[#ffffff] - Send team message/close teamchat.");
+			g_HelpMemo.AddLine("[#00ff00]1[#ffffff] - [Team] Enemy spotted!");
+			g_HelpMemo.AddLine("[#00ff00]2[#ffffff] - [Team] Need backup!");
+			g_HelpMemo.AddLine("[#00ff00]3[#ffffff] - [Team] Follow me!");
+			g_HelpMemo.AddLine("[#00ff00]4[#ffffff] - [Team] Incoming!");
+			g_HelpMemo.AddLine("[#00ff00]5[#ffffff] - [Team] Go, go, go!");
+			g_HelpMemo.AddLine("[#00ff00]6[#ffffff] - [Team] Roger that!");
+
+			g_HelpWindow.AddChild( g_HelpMemo );
+		}
+		else g_HelpWindow.Visible = true;
+	}
+	else if ( g_HelpWindow ) g_HelpWindow.Visible = false;
 }
 
 function UpdateTeamNames( szTeam1Name, szTeam2Name )
@@ -756,7 +927,7 @@ function TimeProcess()
 			BigMessage( "Fight!", 1500, 3 )
 		}
 		
-		if ( pSettings.AFKSlapTime && ( g_iLastMoveTime - pGame.RoundTime  > pSettings.AFKSlapTime ) && ( pGame.IsAttacker ) && ( g_isAFK )) Slap();
+		if (( pSettings.AFKSlapTime ) && ( g_iLastMoveTime - pGame.RoundTime  > pSettings.AFKSlapTime ) && ( pGame.IsAttacker ) && ( g_isAFK )) Slap();
 	}
 	else UpdateClock();
 }
@@ -786,7 +957,7 @@ function onBaseStart( iRoundTime, iMarkerID, isAttacker )
 {
 	ClearMessages();
 	if ( !SETTING_MUTE ) PlayFrontEndTrack( 16 );
-	if ( isAttacker ) pGame.IsAttacker = true;
+	pGame.IsAttacker = isAttacker;
 	g_iGameState = 1;
 	g_pLocalPlayer.Frozen = true;
 	g_pMarker = FindSphere( iMarkerID );
@@ -797,6 +968,7 @@ function onBaseStart( iRoundTime, iMarkerID, isAttacker )
 	
 	if ( pGame.IsVotingInProgress ) EndVote();
 	
+	g_RandomRadio = rand() % ( 0 - 8 );
 	pGame.RoundTime = iRoundTime;
 	g_iRoundStartTime = pGame.RoundTime;
 	g_iLastMoveTime = pGame.RoundTime - 10;
@@ -826,7 +998,7 @@ function onBaseEnd( iTeam1Score, iTeam2Score, isSpawned, isWinner )
 		ShowMouseCursor( false );
 		ToggleCameraMovement( true );
 		g_SelectWeaponWindow.Visible = false;
-		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
+		//UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
 	}
 	
 	g_pLocalPlayer.Frozen = false;
@@ -977,7 +1149,7 @@ function GetPartReasonFromID( iReasonID )
 function onPlayerJoin( pPlayer )
 {
 	Message( "* " + pPlayer.Name + " has joined the game! (ID: " + pPlayer.ID + ")", Colour( 255, 255, 0 ));
-	if ( !SETTING_MUTE ) PlayFrontEndSound( 191 );
+	if ( !SETTING_MUTE ) PlayFrontEndTrack( 191 );
 	
 	return 0;
 }
@@ -989,6 +1161,17 @@ function onPlayerPart( pPlayer, iReasonID )
 	else Message( "* " + pPlayer.Name + " has left the game. (ID: " + pPlayer.ID + " | Reason: " + GetPartReasonFromID( iReasonID ) + ")", Colour( 255, 255, 0 ));
 	
 	return 0;
+}
+
+function onClientEnteredVehicle ( pVehicle, iSeat )
+{
+	if ( g_OwnRadio != 255 ) PlayFrontEndTrack( g_OwnRadio );
+	else PlayFrontEndTrack( g_RandomRadio );
+}
+
+function onClientExitingVehicle( pVehicle )
+{
+	StopFrontEndTrack();
 }
 
 function onClientVehicleShot( pVehicle, pPlayer, iWeaponID )
@@ -1031,6 +1214,11 @@ function onClientShot( pPlayer, iWeaponID, iBodypartID )
 			return 0;
 		}
 	}
+}
+
+function onClientDeath( pKiller, iWeapon, iBodypart )
+{
+	if ( g_SelectWeaponWindow ) g_SelectWeaponWindow.Visible = false;
 }
 
 function onGlassSmash( fDamage, fX, fY, fZ, fHitX, fHitY, fHitZ, bExplosion )
@@ -1121,11 +1309,15 @@ function onClientCommand( szCommand, szText )
 	else if ( szCommand == "radio" )
 	{
 		if ( !szText ) Message( "Use [#00ff00]/radio <1-8>[#ffff00] or [#00ff00]/radio off", Colour( 255, 255, 0 ));
-		else if ( szText == "off" ) StopFrontEndTrack();
+		else if ( szText == "off" ) { StopFrontEndTrack(); g_OwnRadio = 255; }
 		else
 		{
 			local iFM = szText.tointeger();
-			if (( iFM <= 8 ) && ( iFM >= 0 )) PlayFrontEndTrack( iFM );
+			if (( iFM <= 8 ) && ( iFM >= 0 ))
+			{
+				PlayFrontEndTrack( iFM );
+				g_OwnRadio = iFM;
+			}
 		}
 	}
 	else if ( szCommand == "sfx" )
@@ -1163,18 +1355,6 @@ function EndSpawnScreenScene( pSpawn )
 	SetHUDEnabled( true );
 	ClearMessages();
 	//StopFrontEndTrack();
-	
-	/*if ( pSpawn.Team == 0 )
-	{
-		g_SpawnScreenLabel.Text = "_";
-		g_SpawnScreenLabel.Pos = VectorScreen( 0, ScreenHeight - 90 );
-	}
-	else if ( pSpawn.Team == 1 )
-	{
-		g_SpawnScreenLabel.Text = "_";
-		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth - 30, ScreenHeight - 90 );
-
-	}*/
 }
 
 function UpdateSpawnScreenScene( pSpawn )
@@ -1183,18 +1363,6 @@ function UpdateSpawnScreenScene( pSpawn )
 	FadeCamera( 1, true );
 	ShakeCamera( 200 );
 	PlayFrontEndSound( 94 );
-	
-	/*if ( pSpawn.Team == 0 )
-	{
-		g_SpawnScreenLabel.Text = g_Team1StatsLabel.Text;
-		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth/2, ScreenHeight/2+200 );
-	}
-	else if ( pSpawn.Team == 1 )
-	{
-		g_SpawnScreenLabel.Text = g_Team2StatsLabel.Text;
-		g_SpawnScreenLabel.Pos = VectorScreen( ScreenWidth/2, ScreenHeight/2+200 );
-
-	}*/
 	
 	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn.Team );
 }

@@ -96,7 +96,7 @@ class CPlayerClass
 	}
 	function Spawn()
 	{
-		if ( TEAM_BALANCE_DIFFERENCE ) pPlayerManager.CheckBalance( this.Instance, this.Instance.Team );
+		if ( TEAM_BALANCE_DIFFERENCE ) pPlayerManager.CheckBalance( this.Instance );
 		
 		this.Instance.Immune = true;
 		pPlayerManager.CountPlayers();
@@ -108,6 +108,9 @@ class CPlayerClass
 			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
 		}
 		
+		::CloseSSVBridge();
+		::SetSSVBridgeLock( true );
+		this.Instance.ClearWeapons();
 		this.Instance.Pos = lobby_spawn_pos[this.Instance.Team];
 		this.Instance.Angle = lobby_spawn_angle[this.Instance.Team];
 		
@@ -121,6 +124,8 @@ class CPlayerClass
 		if ( pGame.IsRoundInProgress ) { MessagePlayer( "[#ff0000][Error] [#00ff00]You cant change your team while round is in progress.", this.Instance ); return 0; }
 		else if ( !this.Instance.Spawned ) { MessagePlayer( "[#ff0000][Error] [#00ff00]You must be spawned first.", this.Instance ); return 0; }
 		
+		this.Instance.Colour = this.Instance.Team;
+
 		if ( this.Instance.Team == 0 ) this.Instance.Team = 1;
 		else if ( this.Instance.Team == 1 ) this.Instance.Team = 0;
 		
@@ -346,9 +351,6 @@ class CPlayerManager
 		pSettings.UpdateClientSettings( pPlayer );
 		
 		local isAttacker = false;
-		if ( pPlayer.Team != g_iDefendingTeam ) isAttacker = true;
-		
-		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID, isAttacker );
 			
 		if ( !pGame.IsArena )
 		{
@@ -356,11 +358,13 @@ class CPlayerManager
 			{
 				pPlayer.Pos = Vector( pBase.Spawn_X, pBase.Spawn_Y, pBase.Spawn_Z );
 				pPlayer.Angle = pBase.Spawn_Angle;
+				isAttacker = false;
 			}
 			else
 			{
 				pPlayer.Pos = Vector( pSpawn.Spawn_X, pSpawn.Spawn_Y, pSpawn.Spawn_Z );
 				pPlayer.Angle = pSpawn.Spawn_Angle;
+				isAttacker = true;
 			}
 		}
 		else
@@ -369,13 +373,17 @@ class CPlayerManager
 			{
 				pPlayer.Pos = Vector( pArena.Red_Spawn_X, pArena.Red_Spawn_Y, pArena.Red_Spawn_Z );
 				pPlayer.Angle = pArena.Red_Spawn_Angle;
+				isAttacker = false;
 			}
 			else
 			{
 				pPlayer.Pos = Vector( pArena.Blue_Spawn_X, pArena.Blue_Spawn_Y, pArena.Blue_Spawn_Z );
 				pPlayer.Angle = pArena.Blue_Spawn_Angle;
+				isAttacker = false;
 			}
 		}
+		
+		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID, isAttacker );
 			
 		pPlayerManager.CountMembers();
 		
@@ -586,20 +594,27 @@ class CPlayerManager
 		else if ( iTeamID == 1 ) return SpawnedBluePlayers;
 		else return 0;
 	}
-	function CheckBalance( pPlayer, iTeamID )
+	function CheckBalance( pPlayer )
 	{
-		local iOpponentTeam;
-		if ( iTeamID == 0 ) iOpponentTeam = 1;
-		else if ( iTeamID == 1 ) iOpponentTeam = 0;
-		if ( pPlayerManager.GetSpawnedPlayersCount( iTeamID ) > pPlayerManager.GetSpawnedPlayersCount( iOpponentTeam ))
+		if ( pPlayerManager.GetTeamPlayersCount( 0 ) != pPlayerManager.GetTeamPlayersCount( 1 ))
 		{
-			local iDifference = pPlayerManager.GetSpawnedPlayersCount( iTeamID ) - pPlayerManager.GetSpawnedPlayersCount( iOpponentTeam );
-			if ( iDifference > TEAM_BALANCE_DIFFERENCE )
+			local iOpponentTeam;
+			if ( pPlayer.Team == 0 ) iOpponentTeam = 1;
+			else if ( pPlayer.Team == 1 ) iOpponentTeam = 0;
+			
+			local 	iDifference,
+					iAllies = pPlayerManager.GetTeamPlayersCount( pPlayer.Team ),
+					iOpponents = pPlayerManager.GetTeamPlayersCount( iOpponentTeam );
+				
+			if ( iAllies > iOpponents ) iDifference = iAllies - iOpponents;
+			else if ( iAllies < iOpponents ) iDifference = iOpponents - iAllies;
+
+			//local iDifference = pPlayerManager.GetTeamPlayersCount( iAllies ) - pPlayerManager.GetTeamPlayersCount( iOpponentTeam );
+			if ( iDifference >= TEAM_BALANCE_DIFFERENCE )
 			{
 				CPlayer[ pPlayer.ID ].SwitchTeam();
 				MessagePlayer( "[#ff0000]There are too many players in selected team.", pPlayer );
 				Message( "[#00ff00]Team balancer has moved " + pPlayer.Name + " to " + pPlayerManager.GetTeamName( pPlayer.Team ) + " team." );
-				//if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
 			}
 			else return 1;
 		}
@@ -620,14 +635,14 @@ class CPlayerManager
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (killed all enemies)" );
 				Team2Score++;
+				pGame.End( 1 );
 			}
 			else
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (killed all enemies)" );
 				Team1Score++;
+				pGame.End( 0 );
 			}
-			
-			pGame.End( 1 );
 		}
 		else if ( pBase.RoundTime == 0 )
 		{
@@ -715,6 +730,7 @@ class CBase
 		Marker_Z = ::pBaseData.Marker.z;
 		
 		::SetServerRule( "Base", Name );
+		::OpenSSVBridge();
 		
 		return 1;
 	}
@@ -911,7 +927,6 @@ class CGameLogic
 		SetWeather( LOBBY_WEATHER );
 		if ( LOBBY_HOUR == -1 ) SetTime( date().hour, date().min );
 		else SetTime( LOBBY_HOUR, 00 );
-		pPlayerManager.SwitchTeams();
 		IsRoundInProgress = false;
 		IsArena = false;
 		Taker = null;
@@ -934,6 +949,7 @@ class CGameLogic
 			pPlayerManager.DeleteFromRound( pPlayer );
 		}
 		
+		pPlayerManager.SwitchTeams();
 		CleanMap();
 		
 		return 1;

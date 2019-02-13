@@ -5,7 +5,7 @@ ADMIN_LEVEL					<- 1;		// level to grant after /bmlogin
 ADMIN_LOGIN_ATTEMPTS		<- 3;		// login attempts before ban
 PUNISHMENT_METHOD			<- 0;		// type of punishment on key mismatch (0=kick, 1=ban)
 LUID_AUTOLOGIN				<- false;	// enable/disable LUID autologin
-NUMBER_OF_BASES				<- 19;		// number of bases for autoplay system. Atm. 1-19.
+NUMBER_OF_BASES				<- 20;		// number of bases for autoplay system. Atm. 1-19.
 NUMBER_OF_ARENAS			<- 0;		// number of arenas for autoplay system.
 ROUNDSTART_TYPE				<- 0;		// 0-start random base, 1-vote, 2-admin controlled
 AUTOPLAY_ROUND_REPLAY		<- true;
@@ -17,7 +17,7 @@ CHAT_FLOOD_WARNINGS			<- 10;		// Warnings before mute. Set to null to disable an
 CHAT_FLOOD_INTERVAL			<- 1000;	// (ms) 1 message per second.
 CHAT_REPEAT_INTERVAL		<- 2000;	// (ms) 1 repeat per 2 seconds.
 CHAT_REPEAT_ALLOWED			<- 3;		// How many repeats are allowed before warn.
-TEAM_BALANCE_DIFFERENCE		<- 1;		// Set null to disable team balancer.
+TEAM_BALANCE_DIFFERENCE		<- null;	// Set null to disable team balancer. It's broken, so use it on your own risk.
 
 // Lobby Settings 			- [ RED, BLUE ]
 lobby_spawn_pos				<- [ Vector( 165.10, -1003.50, 29.53 ), Vector( 165.74, -990.81, 29.53 ) ];
@@ -26,7 +26,7 @@ LOBBY_WEATHER				<- 0;		// 0 - Sun | 1 - Cloud | 2 - Rain | 3 - Fog
 LOBBY_HOUR					<- -1;		// -1 sync with server time
 
 // Server settings
-SetServerName( "Basemode " + SCRIPT_VERSION +" Server" );
+SetServerName( "[Official] Basemode " + SCRIPT_VERSION +" Server [LU-DM TEAM]" );
 SetMaxPlayers( 32 );
 //SetPort( 2301 );
 SetPassword( "" );
@@ -34,11 +34,5 @@ SetPassword( "" );
 // Game settings
 EnableTrains( false );
 SetSSVBridgeLock( true );
-CloseSSVBridge( );
 SetWeatherLock( true );
 SetFriendlyFire( true );
-
-for( local iGarageID = 0; iGarageID <= 26; iGarageID++ )
-{
-	OpenGarage( iGarageID );
-}
