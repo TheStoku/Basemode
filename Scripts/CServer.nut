@@ -14,18 +14,139 @@ g_iLastPlayedBase <- null;
 class CPlayerClass
 {
 	Instance = null;
+	Key = null;
 	LastMessage = null;
 	LastMessageTime = null;
 	Repeats = null;
-	Warnings = null;
+	LoggedIn = null;
+	lastspawn=null;
+	
+	// Stats
+	DBID = null;
+	Nick = null;
+	LUID = null;
+	Password = null;
+	IP = null;
+	AdminLevel = 0;
+	Warnings = 0;
+	Joins = 1;
+	Kills = 0;
+	Deaths = 0;
+	Wins = 0;
+	Loses = 0;
+	Captures = 0;
+	LastSeen = 0;
+	Registered = null;
 	
 	constructor( pPlayer )
 	{
 		Instance = pPlayer;
+		Key = GetTickCount();
 		LastMessage = "";
 		LastMessageTime = 0;
 		Repeats = 0;
+		LoggedIn = false;
+		lastspawn=0;
+		
+		DBID = 0;
+		Nick = pPlayer.Name;
+		LUID = pPlayer.LUID;
+		Password = "";
+		IP = pPlayer.IP;
+		AdminLevel = 0;
 		Warnings = 0;
+		Joins = 1;
+		Kills = 0;
+		Deaths = 0;
+		Wins = 0;
+		Loses = 0;
+		Captures = 0;
+		LastSeen = "";
+		Registered = "";
+		
+		pPlayer.Marker = false;
+	}
+	function Join()
+	{
+		if ( !Autologin() ) CallClientFunc( this.Instance, "basemode/client.nut", "ShowRegistrationWindow" );
+	}
+	function IsRegistered()
+	{
+		if ( this.LoggedIn ) return 1;
+		else
+		{
+			if ( pDatabase.IsPlayerRegisteredQuery( this.Instance )) return 1;
+			else return 0;
+		}
+	}
+	function Autologin()
+	{
+		if ( !this.LoggedIn )
+		{
+			if ( pDatabase.IsPlayerRegisteredQuery( this.Instance ) )
+			{
+				if ( !this.LoggedIn ) { MessagePlayer( "This account is registered. Use /login <password> command.", this.Instance ); return 1; }
+				else
+				{
+					//LoadData
+					pDatabase.LoadPlayerData( this.Instance );
+					this.LoggedIn = true;
+					this.Joins++;
+					::MessagePlayer("[#00ff00]Your account has been loaded successfully.", this.Instance );
+					if ( this.Password.len() == 0 )
+					{
+						::MessagePlayer("[#ff0000]You don't have password protection.", this.Instance );
+						::MessagePlayer("[#ff0000]Use [#ffff00]/protect <password>[#ff0000] command.", this.Instance );
+					}
+					return 1;
+				}
+			}
+			else return 0;
+		}
+	}
+	function Login( szPass )
+	{
+		if ( CPlayer[ this.Instance.ID ].LoggedIn )  MessagePlayer( "[#00ff00]You are already logged in!", this.Instance );
+		else if ( !szPass ) MessagePlayer( "[#ff0000][Syntax] [#ffffff] /login <password>", this.Instance );
+		else if ( pDatabase.CheckPassword( this.Instance, szPass ) )
+		{
+			//LoadData
+			pDatabase.LoadPlayerData( this.Instance );
+			this.LoggedIn = true;
+			this.Joins++;
+			MessagePlayer( "You have been logged in successfully!", this.Instance );
+		}
+		else
+		{
+			if ( !loginAttempts.rawin( this.Instance.Name ) ) loginAttempts.rawset( this.Instance.Name, 0 );
+			local iAttempts = loginAttempts.rawget( this.Instance.Name );
+
+			iAttempts++;
+			loginAttempts.rawset( this.Instance.Name, iAttempts );
+
+			MessagePlayer( "[#ff0000][Basemode] [#ffffff]Login failed (Attempts " + loginAttempts.rawget( this.Instance.Name ).tostring() + "/" + PLAYER_LOGIN_ATTEMPTS + ").", this.Instance );
+			
+			if ( iAttempts == PLAYER_LOGIN_ATTEMPTS )
+			{
+				MessagePlayer( "[#ff0000][Basemode] [#ffffff] Login attempts limit reached. Banning...", this.Instance );
+				BanLUID ( this.Instance.LUID );
+				BanIP ( this.Instance.IP );
+			}
+		}
+	}
+	function Register()
+	{
+		pDatabase.RegisterQuery( this.Instance );
+		//pDatabase.SavePlayerData( this.Instance );
+		
+		MessagePlayer( "Your account has been created!", this.Instance );
+		MessagePlayer("[#ff0000]You don't have password protection.", this.Instance );
+		MessagePlayer("[#ff0000]Use [#ffff00]/protect <password>[#ff0000] command.", this.Instance );
+	}
+	function ShowRegisteredMessage()
+	{
+		MessagePlayer( "Message 1", this.Instance );
+		MessagePlayer( "Message 2", this.Instance );
 	}
 	function DetectSpam( szMessage )
 	{
@@ -96,8 +217,8 @@ class CPlayerClass
 	}
 	function Spawn()
 	{
+		if ( !this.Instance.Spawned ) return 0;
 		if ( TEAM_BALANCE_DIFFERENCE ) pPlayerManager.CheckBalance( this.Instance );
-		
 		this.Instance.Immune = true;
 		pPlayerManager.CountPlayers();
 		CLIENT_UpdateSpawnSelection( this.Instance, "" );
@@ -110,6 +231,11 @@ class CPlayerClass
 		
 		::CloseSSVBridge();
 		::SetSSVBridgeLock( true );
+		for( local iGarageID = 0; iGarageID <= 26; iGarageID++ )
+		{
+			::OpenGarage( iGarageID );
+		}
+		
 		this.Instance.ClearWeapons();
 		this.Instance.Pos = lobby_spawn_pos[this.Instance.Team];
 		this.Instance.Angle = lobby_spawn_angle[this.Instance.Team];
@@ -125,7 +251,7 @@ class CPlayerClass
 		else if ( !this.Instance.Spawned ) { MessagePlayer( "[#ff0000][Error] [#00ff00]You must be spawned first.", this.Instance ); return 0; }
 		
 		this.Instance.Colour = this.Instance.Team;
-
+		
 		if ( this.Instance.Team == 0 ) this.Instance.Team = 1;
 		else if ( this.Instance.Team == 1 ) this.Instance.Team = 0;
 		
@@ -143,7 +269,24 @@ class CPlayerClass
 		}
 		return 1;
 	}
+	function Ban()
+	{
+		//BanLUID( ::this.Instance.LUID );
+		//BanPlayer( ::this.Instance, BANTYPE_IP );
+		//BanPlayer( ::this.Instance, BANTYPE_NAME );
+	}
+	function CheckKey( iKey )
+	{
+		if (( !iKey ) || ( iKey != this.Key ))
+		{
+			this.Ban();
+			Message( "[#00ff00]Banning " + this.Instance.Name + " (exploit attempt)" );
+		}
+		else return 1;
+	}
 }
+
+
 
 class CSettings
 {
@@ -321,6 +464,27 @@ class CVoteManager
 	}
 }
 
+class CTeamClass
+{
+	Players = null;
+	Alive = null;
+	Spawned = null;
+	Score = null;
+	Name = null;
+	Color = null;
+	IsSpectator = null;
+	
+	constructor( szName, bIsSpectator )
+	{
+		Players = 0;
+		Alive = 0;
+		Spawned = 0;
+		Score = 0;
+		Name = szName;
+		Color = RGB( 0, 0, 0 );
+		IsSpectator = bIsSpectator;
+	}
+}
 class CPlayerManager
 {
 	RedMembers = 0;
@@ -341,6 +505,7 @@ class CPlayerManager
 	}
 	function AddToRound( pPlayer )
 	{
+		if ( !pPlayer.Spawned ) return 0;
 		pPlayerManager.SetTeam( pPlayer );
 		pPlayerManager.Add( pPlayer );
 		
@@ -384,7 +549,7 @@ class CPlayerManager
 		}
 		
 		CallClientFunc( pPlayer, "basemode/client.nut", "onBaseStart", pBase.RoundTime, g_Marker.ID, isAttacker );
-			
+		
 		pPlayerManager.CountMembers();
 		
 		foreach( iPlayerID in Players )
@@ -628,6 +793,7 @@ class CPlayerManager
 		{
 			pGame.End( 255 );
 			Message( "[#00FF00]*** This round was a draw!" );
+			if (USE_ECHO) decho(3,"***This round was a draw!***");
 		}
 		else if (( RedMembers == 0 ) || ( BlueMembers == 0 ))
 		{			
@@ -635,12 +801,14 @@ class CPlayerManager
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (killed all enemies)" );
 				Team2Score++;
+				if (USE_ECHO) decho(3,"***" + pPlayerManager.Team2Name + " team wins! (killed all enemies)***");
 				pGame.End( 1 );
 			}
 			else
 			{
 				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (killed all enemies)" );
 				Team1Score++;
+				if (USE_ECHO) decho(3,"***" + pPlayerManager.Team1Name + " team wins! (killed all enemies)***");
 				pGame.End( 0 );
 			}
 		}
@@ -664,14 +832,20 @@ class CPlayerManager
 		{			
 			if ( g_iDefendingTeam == 1 )
 			{
-				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (captured the base)" );
+				local pTaker = FindPlayer( pGame.Taker );
+				Message( "[#00FF00]*** " + pPlayerManager.Team1Name + " team wins! (captured the base-" + pTaker.Name + ")" );
+				CPlayer[ pTaker.ID ].Captures++;
 				Team1Score++;
+				if (USE_ECHO) decho(3,"***" + pPlayerManager.Team1Name + " team wins! (captured the base)***");
 				pGame.End( 0 );
 			}
 			else
 			{
-				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (captured the base)" );
+				local pTaker = FindPlayer( pGame.Taker );
+				Message( "[#00FF00]*** " + pPlayerManager.Team2Name + " team wins! (captured the base-" + pTaker.Name + ")" );
+				CPlayer[ pTaker.ID ].Captures++;
 				Team2Score++;
+				if (USE_ECHO) decho(3,"***" + pPlayerManager.Team2Name + " team wins! (captured the base)***");
 				pGame.End( 1 );
 			}
 		}
@@ -785,7 +959,7 @@ class CArena
 		pBase.Marker_Y = ::pArenaData.Marker.y;
 		pBase.Marker_Z = ::pArenaData.Marker.z;
 		
-		if ( GAMEMODE_NAME_INFO ) ::SetGameModeName ( "[Arena: " + pBase.Name + "] " + GAMEMODE_NAME );
+		//::SetGameModeName ( "[Arena: " + pBase.Name + "]" );
 		//::SetWorldBounds( Bound_Max_X, Bound_Min_X, Bound_Max_Y, Bound_Min_Y );
 		
 		return 1;
@@ -865,7 +1039,8 @@ class CGameLogic
 				if (( pBase.LoadData( iBaseID ) ) && ( pSpawn.LoadData( )))
 				{
 					Message( "[#00FF00]*** Starting base " + pBase.Name + " - " + ::GetDistrictName( pBase.Marker_X, pBase.Marker_Y ) + " (ID: " + iBaseID + ")" );
-									
+					if (USE_ECHO) decho(3,"***Starting base " + pBase.Name + " - " + ::GetDistrictName( pBase.Marker_X, pBase.Marker_Y ) + " (ID: " + iBaseID + ")***");
+					
 					IsRoundInProgress = true;
 					IsArena = false;
 					//pSettings.CountdownTime = 5;
@@ -943,7 +1118,13 @@ class CGameLogic
 			
 			CPlayer[ pPlayer.ID ].DecreaseWarns();
 			
-			if ( pPlayer.Team == iWinnerTeam ) isWinner = true;
+			if ( iWinnerTeam != 255 )
+			{
+				if ( pPlayer.Team == iWinnerTeam ) isWinner = true;
+				if ( isWinner ) CPlayer[ pPlayer.ID ].Wins++;
+				else CPlayer[ pPlayer.ID ].Loses++;
+			}
+			
 			CallClientFunc( pPlayer, "basemode/client.nut", "onBaseEnd", pPlayerManager.Team1Score, pPlayerManager.Team2Score, pPlayer.Spawned, isWinner );
 			
 			pPlayerManager.DeleteFromRound( pPlayer );
@@ -965,6 +1146,12 @@ class CGameLogic
 		}
 	}
 }
+
+function CLIENT_UpdateCaptureTime( pPlayer )
+{
+	if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateCaptureTime", pGame.CaptureTime );
+}
+
 
 function CLIENT_UpdateScores( pPlayer, bAll )
 {
@@ -995,5 +1182,5 @@ function CLIENT_UpdateSpawnSelection( pPlayer, szName )
 
 function CLIENT_UpdateSettings( pPlayer )
 {
-	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, GetMaxPlayers(), AFK_SLAP_TIME );
+	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateSettings", ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, GetMaxPlayers(), AFK_SLAP_TIME, CPlayer[ pPlayer.ID ].AdminLevel, CPlayer[ pPlayer.ID ].Key );
 }

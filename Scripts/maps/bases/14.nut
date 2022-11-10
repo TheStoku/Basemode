@@ -1,9 +1,9 @@
 class ::CBaseData
 {
-	Name = "SI - Schody";
+	Name = "SI - Stairs";
 	Author = "Stoku ft. mrSychu";
 	RoundTime = 8;
-	SpawnID = 1;
+	SpawnID = 2;
 	Weather = 0;
 	Hour = 23;
 

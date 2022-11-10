@@ -1,0 +1,11 @@
+<Name>Marco's Bistro</Name>
+<Author>Stoku</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>8</Weather>
+<Hour>0</Hour>
+
+<Spawns>
+	<player x="1321.30" y="-453.20" z="54.55" angle="270"/>
+	<marker x="1309.30" y="-459.30" z="59.6"/>
+</Spawns>

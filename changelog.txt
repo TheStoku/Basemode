@@ -1,5 +1,12 @@
 History:
 
+1.1:
+- added 10 new bases and new attackers spawnpoint
+- added accounts system
+- added F1 help menu
+- added anti-crasher
+- some other major and minor fixes
+
 1.0 Final:
 - fixed fast messages spamming when teamchat open
 - fixed antiafk killing defence

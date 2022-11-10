@@ -1,0 +1,11 @@
+<Name>Garages</Name>
+<Author>Stoku</Author>
+<RoundTime>8</RoundTime>
+<Spawn>1</Spawn>
+<Weather>13</Weather>
+<Hour>0</Hour>
+
+<Spawns>
+	<player x="1085.90" y="-884.80" z="15" angle="5.48884"/>
+	<marker x="1100.70" y="-885.70" z="15.00"/>
+</Spawns>

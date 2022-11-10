@@ -1,14 +1,15 @@
 /* ############################################################## */
-/* #			BaseMode v1.0 final by Stoku						# */
+/* #			BaseMode v1.1 by Stoku							# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-local SCRIPT_VERSION			= "1.0 final";
+local SCRIPT_VERSION			= "1.1";
 local SCRIPT_AUTHOR				= "Stoku";
 
 local GUI_THEME_MAIN_COLOR 		= Colour( 0, 255, 0 );
 local SETTING_MUTE				= false;
 local WEP_AFK_KILLER 			= 155;
+local KEY						= null;
 
 g_pLocalPlayer <- FindLocalPlayer();
 g_pMarker <- null;
@@ -19,8 +20,16 @@ g_iLastMoveTime <- 0;
 g_isAFK	<- false;
 g_iRoundStartTime <- 0;
 
+g_RegistrationWindow <- null;
+g_RegistrationMemo <- null;
+g_RegistrationAccept <- null;
+g_RegistrationDecline <- null;
+
 g_HelpWindow <- null;
 g_HelpMemo <- null;
+
+g_AdminHelpWindow <- null;
+g_AdminHelpMemo <- null;
 
 g_Logo <- null;
 g_StatsPanel <- null;
@@ -90,11 +99,13 @@ class CSettings
 	BaseballBat = false;
 	MaxPlayers = 0;
 	AFKSlapTime = 0;
+	AdminLevel = false;
 }
 
 function onScriptLoad()
 {
 	ConsoleMessage( "This server is using BaseMode v" + SCRIPT_VERSION + " by " + SCRIPT_AUTHOR + "." );
+	ConsoleMessage( "Press 'F1' for help." );
 	
 	//PlayFrontEndTrack( 191 );
 	
@@ -103,16 +114,17 @@ function onScriptLoad()
 
 	BindKey( KEY_F1, BINDTYPE_DOWN, "ShowHelpWindow", "1" );
 	BindKey( KEY_F1, BINDTYPE_UP, "ShowHelpWindow", "0" );
-	BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Enemy Spotted!" );
-	BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Need backup!" );
-	BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Follow me!" );
-	BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Incoming!" );
-	BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Go, go, go!" );
-	BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Roger that!" );
-	//BindKey( '0', BINDTYPE_DOWN, "plus" );
-	//BindKey( '9', BINDTYPE_DOWN, "minus" );
-	
+	//BindKey( 'L', BINDTYPE_UP, "ToggleLights" );
 	BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
+	BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[1][#ffff00]Enemy Spotted!" );
+	BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[2][#ffff00]Need backup!" );
+	BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[3][#ffff00]Follow me!" );
+	BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[4][#ffff00]Incoming!" );
+	BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[5][#ffff00]Go, go, go!" );
+	BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[6][#ffff00]Roger that!" );
+	BindKey( '7', BINDTYPE_UP, "SendTeamMessage", "[7][#ffff00]Get back to the base!" );
+	BindKey( '0', BINDTYPE_DOWN, "plus" );
+	BindKey( '9', BINDTYPE_DOWN, "minus" );
 	
 	pGame <- CGame();
 	pSettings <- CSettings();
@@ -231,6 +243,8 @@ function onScriptLoad()
 	g_TeamChatEditbox.FontSize = 10;
 	AddGUILayer( g_TeamChatEditbox );
 	
+	//ShowRegistrationWindow();
+	//ShowWeaponsSelectMenu();
 	UpdateSpawnScreenScene( FindSpawnClass( 0 ));
 }
 
@@ -247,6 +261,7 @@ function ToggleTeamChat()
 		UnbindKey( '4', BINDTYPE_UP, "SendTeamMessage" );
 		UnbindKey( '5', BINDTYPE_UP, "SendTeamMessage" );
 		UnbindKey( '6', BINDTYPE_UP, "SendTeamMessage" );
+		UnbindKey( '7', BINDTYPE_UP, "SendTeamMessage" );
 		BindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage", "" );
 		g_TeamChatEditbox.Visible = true;
 		g_TeamChatEditbox.Active = true;
@@ -258,12 +273,13 @@ function ToggleTeamChat()
 		g_pLocalPlayer.Frozen = false;
 		UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "SendTeamMessage" );
 		BindKey( 'Y', BINDTYPE_UP, "ToggleTeamChat" );
-		BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Enemy Spotted!" );
-		BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Need backup!" );
-		BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Follow me!" );
-		BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Incoming!" );
-		BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Go, go, go!" );
-		BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[#ffff00]Roger that!" );
+		BindKey( '1', BINDTYPE_UP, "SendTeamMessage", "[1][#ffff00]Enemy Spotted!" );
+		BindKey( '2', BINDTYPE_UP, "SendTeamMessage", "[2][#ffff00]Need backup!" );
+		BindKey( '3', BINDTYPE_UP, "SendTeamMessage", "[3][#ffff00]Follow me!" );
+		BindKey( '4', BINDTYPE_UP, "SendTeamMessage", "[4][#ffff00]Incoming!" );
+		BindKey( '5', BINDTYPE_UP, "SendTeamMessage", "[5][#ffff00]Go, go, go!" );
+		BindKey( '6', BINDTYPE_UP, "SendTeamMessage", "[6][#ffff00]Roger that!" );
+		BindKey( '7', BINDTYPE_UP, "SendTeamMessage", "[7][#ffff00]Get back to the base!" );
 		g_TeamChatEditbox.Visible = false;
 		g_TeamChatEditbox.Active = false;
 	}
@@ -274,17 +290,17 @@ function SendTeamMessage( szText )
 	if ( szText )
 	{
 		//ToggleTeamChat();
-		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, szText );
+		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, szText, KEY );
 	}
 	else if (( g_TeamChatEditbox.Visible ) && ( g_TeamChatEditbox.Text.len() > 0 ))
 	{
 		ToggleTeamChat();
-		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, g_TeamChatEditbox.Text );
+		CallServerFunc( "basemode/server.nut", "SendTeamMessage", g_pLocalPlayer, g_TeamChatEditbox.Text, KEY );
 	}
 	else ToggleTeamChat();
 }
 
-local i = 0;
+local i = 90;
 
 function plus()
 {
@@ -295,6 +311,7 @@ function plus()
 	// 191 how u doin?
 	// 192 how u doin kid
 	// 149//160 for join
+	// 144 wasted??
 
 	i++;
 	StopFrontEndTrack();
@@ -348,7 +365,7 @@ function StartVote( iBaseID, iVoteTime )
 		AddGUILayer( g_VoteNo );
 	}
 	else
-	{	
+	{
 		g_VoteLabel.Text = "Do you want to start base " + iBaseID + "? (" + iVoteTime + ")";
 		
 		g_VoteYes.TextColour = Colour( 150, 150, 150 );
@@ -372,7 +389,7 @@ function EndVote()
 
 function Vote( bBoolean )
 {
-	CallServerFunc( "basemode/server.nut", "Vote", g_pLocalPlayer, bBoolean );
+	CallServerFunc( "basemode/server.nut", "Vote", g_pLocalPlayer, bBoolean, KEY );
 	
 	if ( bBoolean ) g_VoteYes.TextColour = Colour( 255, 255, 255 );
 	else g_VoteNo.TextColour = Colour( 255, 255, 255 );
@@ -583,7 +600,7 @@ function OK_Button()
 		g_SelectWeaponWindow.Visible = false;
 		//UnbindKey( KEY_RETURN, BINDTYPE_DOWN, "OK_Button" );
 		
-		if ( pGame.IsRoundInProgress ) CallServerFunc( "basemode/server.nut", "GiveWeapons", g_pLocalPlayer, g_PrimaryWeapon, g_SecondaryWeapon, g_AdditionalWeapon );
+		if ( pGame.IsRoundInProgress ) CallServerFunc( "basemode/server.nut", "GiveWeapons", g_pLocalPlayer, g_PrimaryWeapon, g_SecondaryWeapon, g_AdditionalWeapon, KEY );
 	}
 }
 
@@ -787,17 +804,17 @@ function ShowHelpWindow( bShow )
 	{
 		if ( !g_HelpWindow && bShow.tointeger())
 		{
-			g_HelpWindow = GUIWindow( VectorScreen( ScreenWidth/2-300, ScreenHeight/2-150 ), ScreenSize( 600, 280 ), "Basemode help" );
+			g_HelpWindow = GUIWindow( VectorScreen( ScreenWidth/2-300, ScreenHeight/2-210 ), ScreenSize( 610, 420 ), "Basemode help" );
 			g_HelpWindow.Colour = Colour( 0, 0, 0 );
 			g_HelpWindow.Titlebar = true;
 			g_HelpWindow.Alpha = 200;
 			g_HelpWindow.Visible = true;
 			AddGUILayer( g_HelpWindow );
 			
-			g_HelpMemo = GUIMemobox( VectorScreen( 5, 0 ), ScreenSize( 590, 280 ));
+			g_HelpMemo = GUIMemobox( VectorScreen( 5, 0 ), ScreenSize( 600, 420 ));
 			g_HelpMemo.TextColour = Colour( 255, 255, 255 );
 			g_HelpMemo.FontSize = 9;
-			g_HelpMemo.Lines = 19;
+			g_HelpMemo.Lines = 29;
 			g_HelpMemo.Flags = FLAG_COLOURING;
 			
 			g_HelpMemo.AddLine("[#ffff00]Goals:");
@@ -810,6 +827,16 @@ function ShowHelpWindow( bShow )
 			g_HelpMemo.AddLine("[#00ff00]/radio <id 0-8/off>[#ffffff] - turn on/off the radio");
 			g_HelpMemo.AddLine("[#00ff00]/sfx <on/off>[#ffffff] - turn on/off sound effects");
 			g_HelpMemo.AddLine("");
+			g_HelpMemo.AddLine("[#ffff00]Server commands:");
+			g_HelpMemo.AddLine("[#00ff00]/protect <password>[#ffffff] - set password for account");
+			g_HelpMemo.AddLine("[#00ff00]/login <password>[#ffffff] - login to your account");
+			g_HelpMemo.AddLine("[#00ff00]/help[#ffffff] - show help on chat");
+			g_HelpMemo.AddLine("[#00ff00]/info[#ffffff] - info about script and teams");
+			g_HelpMemo.AddLine("[#00ff00]/stats or /stats <player>[#ffffff] - show statiscics");
+			g_HelpMemo.AddLine("[#00ff00]/t <text>[#ffffff] - send team message");
+			g_HelpMemo.AddLine("[#00ff00]/kill[#ffffff] - kill yourself");
+			g_HelpMemo.AddLine("[#00ff00]/eject[#ffffff] - exit vehicle instantly");
+			g_HelpMemo.AddLine("");
 			g_HelpMemo.AddLine("[#ffff00]Keybinds:");
 			g_HelpMemo.AddLine("[#00ff00]Y[#ffffff] - Open teamchat.");
 			g_HelpMemo.AddLine("[#00ff00]Enter[#ffffff] - Send team message/close teamchat.");
@@ -819,6 +846,7 @@ function ShowHelpWindow( bShow )
 			g_HelpMemo.AddLine("[#00ff00]4[#ffffff] - [Team] Incoming!");
 			g_HelpMemo.AddLine("[#00ff00]5[#ffffff] - [Team] Go, go, go!");
 			g_HelpMemo.AddLine("[#00ff00]6[#ffffff] - [Team] Roger that!");
+			g_HelpMemo.AddLine("[#00ff00]7[#ffffff] - [Team] Defend the base!");
 
 			g_HelpWindow.AddChild( g_HelpMemo );
 		}
@@ -827,13 +855,122 @@ function ShowHelpWindow( bShow )
 	else if ( g_HelpWindow ) g_HelpWindow.Visible = false;
 }
 
+function ShowAdminHelpWindow( bShow )
+{
+	if ( bShow.tointeger() )
+	{
+		if ( !g_AdminHelpWindow && bShow.tointeger())
+		{
+			g_AdminHelpWindow = GUIWindow( VectorScreen( ScreenWidth/2-300, ScreenHeight/2-210 ), ScreenSize( 610, 270 ), "Admin help" );
+			g_AdminHelpWindow.Colour = Colour( 0, 0, 0 );
+			g_AdminHelpWindow.Titlebar = true;
+			g_AdminHelpWindow.Alpha = 200;
+			g_AdminHelpWindow.Visible = true;
+			AddGUILayer( g_AdminHelpWindow );
+			
+			g_AdminHelpMemo = GUIMemobox( VectorScreen( 5, 0 ), ScreenSize( 600, 270 ));
+			g_AdminHelpMemo.TextColour = Colour( 255, 255, 255 );
+			g_AdminHelpMemo.FontSize = 9;
+			g_AdminHelpMemo.Lines = 15;
+			g_AdminHelpMemo.Flags = FLAG_COLOURING;
+			
+			g_AdminHelpMemo.AddLine("[#ffff00]Commands:");
+			g_AdminHelpMemo.AddLine("[#00ff00]/add <player>[#ffffff] - add player to the round");
+			g_AdminHelpMemo.AddLine("[#00ff00]/del <player>[#ffffff] - delete player from the round");
+			g_AdminHelpMemo.AddLine("[#00ff00]/ban <player>[#ffffff] - ban player");
+			g_AdminHelpMemo.AddLine("[#00ff00]/kick <player>[#ffffff] - kick player");
+			g_AdminHelpMemo.AddLine("[#00ff00]/base <id>[#ffffff] - start base");
+			g_AdminHelpMemo.AddLine("[#00ff00]/end[#ffffff] - end base with 'draw' result");
+			g_AdminHelpMemo.AddLine("[#00ff00]/resetscore[#ffffff] - reset team scores");
+			g_AdminHelpMemo.AddLine("[#00ff00]/setscore1 <value> /setscore2 <value>[#ffffff] - set scores");
+			g_AdminHelpMemo.AddLine("[#00ff00]/starttype auto|manual|vote[#ffffff] - set start round type");
+			g_AdminHelpMemo.AddLine("[#00ff00]/setadminpass <password>[#ffffff] - set admin password");
+			g_AdminHelpMemo.AddLine("[#00ff00]/setpass <password>[#ffffff] - set server password");
+			g_AdminHelpMemo.AddLine("[#00ff00]/announce <text>[#ffffff] - announce something");
+			g_AdminHelpMemo.AddLine("[#00ff00]/setadminlevel <player>[#ffffff] - set admin level in database");
+			g_AdminHelpMemo.AddLine("[#00ff00]/switch[#ffffff] - switch teams (attack<->defence)");
+			g_AdminHelpMemo.AddLine("[#00ff00]/t1name <text> /t1name <text>[#ffffff] - set team name");
+
+			g_AdminHelpWindow.AddChild( g_AdminHelpMemo );
+		}
+		else g_AdminHelpMemo.Visible = true;
+	}
+	else if ( g_AdminHelpMemo ) g_AdminHelpMemo.Visible = false;
+}
+
+function ShowRegistrationWindow()
+{
+	if ( !g_RegistrationWindow )
+	{
+		g_RegistrationWindow = GUIWindow( VectorScreen( ScreenWidth/2-280, ScreenHeight/2-100 ), ScreenSize( 560, 200 ), "Welcome to the Basemode server!" );
+		g_RegistrationWindow.Colour = Colour( 0, 0, 0 );
+		g_RegistrationWindow.Titlebar = true;
+		g_RegistrationWindow.Alpha = 200;
+		g_RegistrationWindow.Visible = true;
+		AddGUILayer( g_RegistrationWindow );
+		
+		g_RegistrationMemo = GUIMemobox( VectorScreen( 5, 0 ), ScreenSize( 550, 150 ));
+		g_RegistrationMemo.TextColour = Colour( 255, 255, 255 );
+		g_RegistrationMemo.FontSize = 9;
+		g_RegistrationMemo.Lines = 9;
+		g_RegistrationMemo.Flags = FLAG_COLOURING;
+		g_RegistrationMemo.AddLine("");
+		g_RegistrationMemo.AddLine("After accepting the rules, your account will be created automatically.");
+		g_RegistrationMemo.AddLine("");
+		g_RegistrationMemo.AddLine("To protect your account, use [#00ff00]/protect <password>[#ffffff] command.");
+		g_RegistrationMemo.AddLine("");
+		g_RegistrationMemo.AddLine("[#ff0000]Rules:");
+		g_RegistrationMemo.AddLine("- don't use mods to take adventage (ban)");
+		g_RegistrationMemo.AddLine("- no teamkilling, disturbing, spamming or insulting (tempban/ban)");
+		g_RegistrationMemo.AddLine("- ping above 500 and FPS under 15 (kick)");
+		g_RegistrationWindow.AddChild( g_RegistrationMemo );
+		
+		g_RegistrationAccept = GUIButton( VectorScreen( 10, 145 ), ScreenSize( 540, 15 ), "Accept" );
+		g_RegistrationAccept.TextColour = Colour( 255, 255, 255 );
+		g_RegistrationAccept.Colour = Colour( 0, 255, 0 );
+		g_RegistrationAccept.Alpha = 100;
+		//g_RegistrationAccept.Flags = FLAG_SHADOW;
+		g_RegistrationAccept.Visible = true;
+		g_RegistrationAccept.FontName = "Tahoma";
+		g_RegistrationAccept.FontSize = 8;
+		g_RegistrationAccept.SetCallbackFunc( Accept_Button );
+		g_RegistrationWindow.AddChild( g_RegistrationAccept );
+		
+		g_RegistrationDecline = GUIButton( VectorScreen( 10, 170 ), ScreenSize( 540, 15 ), "Decline" );
+		g_RegistrationDecline.TextColour = Colour( 255, 255, 255 );
+		g_RegistrationDecline.Colour = Colour( 255, 0, 0 );
+		g_RegistrationDecline.Alpha = 100;
+		//g_RegistrationDecline.Flags = FLAG_SHADOW;
+		g_RegistrationDecline.Visible = true;
+		g_RegistrationDecline.FontName = "Tahoma";
+		g_RegistrationDecline.FontSize = 8;
+		g_RegistrationDecline.SetCallbackFunc( Decline_Button );
+		g_RegistrationWindow.AddChild( g_RegistrationDecline );
+		
+		ShowMouseCursor( true );
+	}
+}
+
+function Accept_Button()
+{
+	ShowMouseCursor( false );
+	g_RegistrationWindow.Visible = false;
+	CallServerFunc( "basemode/server.nut", "CompleteRegistration", g_pLocalPlayer, true, KEY );
+}
+function Decline_Button()
+{
+	ShowMouseCursor( false );
+	g_RegistrationWindow.Visible = false;
+	CallServerFunc( "basemode/server.nut", "CompleteRegistration", g_pLocalPlayer, false, KEY );
+}
+
 function UpdateTeamNames( szTeam1Name, szTeam2Name )
 {
 	g_Team1StatsLabel.Text = szTeam1Name;
 	g_Team2StatsLabel.Text = szTeam2Name;
 }
 
-function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, MaxPlayers, AFKSlapTime )
+function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleAmmo, MolotovAmmo, GrenadeAmmo, BaseballBat, MaxPlayers, AFKSlapTime, iAdmin, Key )
 {
 	pSettings.ColtAmmo = ColtAmmo;
 	pSettings.UZIAmmo = UZIAmmo;
@@ -846,6 +983,14 @@ function UpdateSettings( ColtAmmo, UZIAmmo, ShotgunAmmo, AKAmmo, M16Ammo, RifleA
 	pSettings.BaseballBat = BaseballBat;
 	pSettings.MaxPlayers = MaxPlayers;
 	pSettings.AFKSlapTime = AFKSlapTime;
+	pSettings.AdminLevel = iAdmin;
+	KEY = Key;
+	
+	if ( AdminLevel > 0 ) 
+	{
+		BindKey( KEY_F3, BINDTYPE_DOWN, "ShowAdminHelpWindow", "1" );
+		BindKey( KEY_F3, BINDTYPE_UP, "ShowAdminHelpWindow", "0" );
+	}
 }
 
 function UpdateScores( iTeam1Score, iTeam2Score )
@@ -882,7 +1027,7 @@ function SetSpawnClass( szName )
 {
 	if ( !g_SpawnScreenLabel )
 	{
-		g_SpawnScreenLabel = GUILabel( VectorScreen( ScreenWidth/2, ScreenHeight-50 ), ScreenSize( 0, 0 ), " " );
+		g_SpawnScreenLabel = GUILabel( VectorScreen( ScreenWidth/2, ScreenHeight-50 ), ScreenSize( 50, 200 ), " " );
 		//g_SpawnScreenLabel.TextColour = Colour( 255, 255, 255 );
 		g_SpawnScreenLabel.Flags = FLAG_COLOURING;
 		g_SpawnScreenLabel.Visible = true;
@@ -896,7 +1041,7 @@ function SetSpawnClass( szName )
 	if ( !szName ) g_SpawnScreenLabel.Visible = false;
 	else
 	{
-		g_SpawnScreenLabel.Text = szName;
+		g_SpawnScreenLabel.Text = szName.toupper();
 		g_SpawnScreenLabel.Visible = true;
 	}
 }
@@ -942,12 +1087,12 @@ function Slap()
 			g_pLocalPlayer.Health -= 5;
 			g_pLocalPlayer.Pos = Vector( vPosition.x, vPosition.y, vPosition.z + 2.0 );
 		}
-		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER );
+		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER, KEY );
 	}
 	else if ( g_pLocalPlayer.Name == g_pLocalPlayer.Vehicle.Driver.Name )
 	{
 		if ( g_pLocalPlayer.Health > 5 ) g_pLocalPlayer.Health -= 5;
-		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER );
+		else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", g_pLocalPlayer, g_pLocalPlayer, WEP_AFK_KILLER, KEY );
 	}
 	PlayFrontEndSound( 53 );
 	Message( "[#ff0000][Slap!] [#00ff00]Go the base showed on radar!", Colour( 255, 255, 255 ));
@@ -958,6 +1103,7 @@ function onBaseStart( iRoundTime, iMarkerID, isAttacker )
 	ClearMessages();
 	if ( !SETTING_MUTE ) PlayFrontEndTrack( 16 );
 	pGame.IsAttacker = isAttacker;
+
 	g_iGameState = 1;
 	g_pLocalPlayer.Frozen = true;
 	g_pMarker = FindSphere( iMarkerID );
@@ -985,7 +1131,11 @@ function onBaseEnd( iTeam1Score, iTeam2Score, isSpawned, isWinner )
 	pGame.IsAttacker = true;
 	pGame.IsRoundInProgress = false;
 	
-	if ( isWinner && !SETTING_MUTE ) PlayFrontEndTrack( 93 );
+	if ( !SETTING_MUTE )
+	{
+		if ( isWinner ) PlayFrontEndTrack( 93 );
+		else PlayFrontEndTrack( 193 );
+	}
 
 	if ( isSpawned )
 	{
@@ -1180,7 +1330,7 @@ function onClientVehicleShot( pVehicle, pPlayer, iWeaponID )
 	{
 		if ( pVehicle.Health > 20 )
 		{
-			CallServerFunc( "basemode/server.nut", "onM16VehicleShot", pPlayer, pVehicle, iWeaponID );
+			CallServerFunc( "basemode/server.nut", "onM16VehicleShot", pPlayer, pVehicle, iWeaponID, KEY );
 			return 0;
 		}
 		else return 1;
@@ -1195,21 +1345,21 @@ function onClientShot( pPlayer, iWeaponID, iBodypartID )
 		if ( iWeaponID == 2 ) 
 		{
 			if ( g_pLocalPlayer.Health > 20 ) g_pLocalPlayer.Health -= 20;
-			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 2 );
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 2, KEY );
 			
 			return 0;
 		}
 		else if ( iWeaponID == 6 )
 		{
 			if ( g_pLocalPlayer.Health > 7 ) g_pLocalPlayer.Health -= 7;
-			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 6 );
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 6, KEY );
 			
 			return 0;
 		}
 		else if ( iWeaponID == 7 )
 		{
 			if ( g_pLocalPlayer.Health > 60 ) g_pLocalPlayer.Health -= 60;
-			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 7 );
+			else CallServerFunc( "basemode/server.nut", "onM16PlayerKill", pPlayer, g_pLocalPlayer, 7, KEY );
 			
 			return 0;
 		}
@@ -1260,7 +1410,8 @@ function onClientRender()
 	else
 	{
 		g_HealthBar.Value = g_pLocalPlayer.Health.tointeger() * 10;
-		g_SpeedoLabel.Text = "";		
+		if ( g_iGameState == 1 ) g_SpeedoLabel.Text = GetDistance( g_pLocalPlayer.Pos, g_pMarker.Pos ).tostring() + "m.";
+		else g_SpeedoLabel.Text = speed.tostring() + " ";
 	}
 
 	// Mouse fursor fix
@@ -1283,17 +1434,12 @@ function onClientKeyStateChange( iOldKeys, iNewKeys )
 
 function onClientCommand( szCommand, szText )
 {
-	//if ( szCommand == "track" ) PlayFrontEndTrack( szText.tointeger() );
-	//else if ( szCommand == "shake" ) ShakeCamera( szText.tointeger() );
-	//else if ( szCommand == "snd" ) i = szText.tointeger();
-	
 	if ( szCommand == "fix" )
 	{
 		ShowMouseCursor( false );
 		RestoreCamera();
 		ToggleCameraMovement( true );
 	}
-	
 	else if ( szCommand == "fix2" )
 	{
 		ShowMouseCursor( true );
@@ -1326,6 +1472,20 @@ function onClientCommand( szCommand, szText )
 		else if ( szText == "on" ) SETTING_MUTE = false;
 		else if ( szText == "off" ) SETTING_MUTE = true;
 	}
+	/*else if ( szCommand == "spect" )
+	{
+		if ( !szText ) Message( "[Error] Missing player name. /spect <player>" );
+		else
+		{
+			local pPlayer = FindPlayer( szText );
+			if ( !pPlayer ) Message( "[Error] This player does not exist." );
+			else if ( pPlayer.Team != g_pLocalPlayer.Team ) Message( "[Error] You cannot spectate enemies." );
+			else
+			{
+				g_pLocalPlayer.Pos = 
+			}
+		}
+	}*/
 	return 1;
 }
 
@@ -1364,7 +1524,7 @@ function UpdateSpawnScreenScene( pSpawn )
 	ShakeCamera( 200 );
 	PlayFrontEndSound( 94 );
 	
-	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn.Team );
+	CallServerFunc( "basemode/server.nut", "onPlayerRequestClass", g_pLocalPlayer, pSpawn.Team, KEY );
 }
 
 // #################################################################

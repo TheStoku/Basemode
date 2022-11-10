@@ -7,6 +7,7 @@ class ::CSpawnData
 
 	function CreateVehicles()
 	{
+		::OpenSSVBridge();
 		// Stretch
 		::CreateVehicle( 99, Vector( 103.05, -947.0, 26.16 ), 270.0, 0, 0 );
 		::CreateVehicle( 99, Vector( 88.82, -947.0, 26.16 ), 270.0, 1, 1 );
@@ -27,6 +28,10 @@ class ::CSpawnData
 	
 		// Dodo
 		::CreateVehicle( 126, Vector( 146.79, -932.00, 26.17 ), 180.312, -1, -1 );
+		
+		// Packer
+		::CreateVehicle( 107, Vector( 159.87, -931, 26.16 ), 180.312, -1, -1 );
+		::CreateVehicle( 116, Vector( 154.52, -931, 26.16 ), 180.312, -1, -1 );
 		
 		return 1;
 	}

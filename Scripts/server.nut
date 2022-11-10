@@ -1,10 +1,11 @@
 /* ############################################################## */
-/* #			BaseMode v1.0 final by Stoku						# */
+/* #			BaseMode v1.1 by Stoku							# */
 /* #					Have fun!								# */
 /* ############################################################## */
 
-SCRIPT_VERSION					<- "1.0 final";
+SCRIPT_VERSION					<- "1.1";
 local SCRIPT_AUTHOR				= "Stoku";
+local isScriptReloading			= false;
 
 SCRIPT_DIR						<- "Scripts/basemode/";
 
@@ -21,6 +22,8 @@ function onScriptLoad()
 	
 	print( "" );
 	print( "-----------------------------------------------" );
+	
+	if (USE_ECHO) decho(4,"Server has been started.");
 	
 	return 1;
 }
@@ -39,6 +42,15 @@ function Load()
 	LoadModule( "lu_ini" );
 	dofile( SCRIPT_DIR + "CServer.nut" );
 	dofile( SCRIPT_DIR + "config.nut" );
+	if (USE_ECHO) dofile( SCRIPT_DIR + "decho.nut" );
+		
+	if ( USE_ACCOUNTS )
+	{
+		LoadModule( "lu_sqlite" );
+		RegisterRemoteFunc( "CompleteRegistration" );
+		dofile( SCRIPT_DIR + "CAccounts.nut" );
+		pDatabase <- CDatabase();
+	}
 	
 	// Configure server settings
 	SetGamemodeName( "BaseMode (AAD)" );
@@ -67,7 +79,7 @@ function Load()
 	
 	g_CaptureTimer = NewTimer( "CaptureTimeProcess", 1000, 0 );
 	g_CaptureTimer.Stop();
-
+	
 	// On script reload
 	if ( ReadIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading" ) )
 	{
@@ -84,6 +96,8 @@ function Load()
 		
 		pPlayerManager.Team1Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1" );
 		pPlayerManager.Team2Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2" );
+		pPlayerManager.Team1Name =  ReadIniString( SCRIPT_DIR + "server.ini", "Settings", "Name1" );
+		pPlayerManager.Team2Name =  ReadIniString( SCRIPT_DIR + "server.ini", "Settings", "Name2" );
 		
 		WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", false );
 	}
@@ -93,25 +107,46 @@ function Load()
 
 function onScriptUnload()
 {
+	foreach( iPlayerID in Players )
+	{
+		local pPlayer = FindPlayer( iPlayerID );
+		if ( pPlayer ) pDatabase.SavePlayerData( pPlayer );
+	}
+	
 	WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", true );
 	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1", pPlayerManager.GetTeamWins( 0 ) );
 	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2", pPlayerManager.GetTeamWins( 1 ) );
+	WriteIniString( SCRIPT_DIR + "server.ini", "Settings", "Name1", pPlayerManager.GetTeamName( 0 ) );
+	WriteIniString( SCRIPT_DIR + "server.ini", "Settings", "Name2", pPlayerManager.GetTeamName( 1 ) );
 	Message( "Script reloading..." );
 	
 	return 1;
 }
 
-function GiveWeapons( pPlayer, iPrimaryWeapon, iSecondaryWeapon, iAdditionalWeapon )
+function CompleteRegistration( pPlayer, bAccept, Key )
+{
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
+	if (!USE_ACCOUNTS) return 0;
+	if ( bAccept ) CPlayer[ pPlayer.ID ].Register();
+	else
+	{
+		MessagePlayer( "You've not accepted the rules." , pPlayer );
+		MessagePlayer( "Come back when you change your mind :)" , pPlayer );
+		KickPlayer( pPlayer );
+	}
+}
+function GiveWeapons( pPlayer, iPrimaryWeapon, iSecondaryWeapon, iAdditionalWeapon, Key )
 {
 	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	pPlayer.ClearWeapons();
 	if ( iAdditionalWeapon != 255 ) pPlayer.SetWeapon( iAdditionalWeapon, pSettings.GetAmmoFromWeaponID( iAdditionalWeapon ));
-	else if ( iPrimaryWeapon != 255 ) pPlayer.SetWeapon( iPrimaryWeapon, pSettings.GetAmmoFromWeaponID( iPrimaryWeapon ));
-	else if ( iSecondaryWeapon != 255 ) pPlayer.SetWeapon( iSecondaryWeapon, pSettings.GetAmmoFromWeaponID( iSecondaryWeapon ));
+	if ( iPrimaryWeapon != 255 ) pPlayer.SetWeapon( iPrimaryWeapon, pSettings.GetAmmoFromWeaponID( iPrimaryWeapon ));
+	if ( iSecondaryWeapon != 255 ) pPlayer.SetWeapon( iSecondaryWeapon, pSettings.GetAmmoFromWeaponID( iSecondaryWeapon ));
 }
 
-function Vote( pPlayer, bBoolean )
+function Vote( pPlayer, bBoolean, Key )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	pVoteManager.Vote( pPlayer, bBoolean );
 }
 
@@ -171,16 +206,12 @@ function TimeProcess()
 				local iRand = rand() % ( 1 - MAP_COUNT );
 				if ( iRand == 0 ) iRand++;	// hotfix :P
 				
-				if ( AUTOPLAY_ROUND_REPLAY && !g_iLastPlayedBase )
-				{
-					g_iLastPlayedBase = iRand;
-				}
+				if ( AUTOPLAY_ROUND_REPLAY && !g_iLastPlayedBase ) g_iLastPlayedBase = iRand;
 				else
 				{
 					iRand = g_iLastPlayedBase;
 					g_iLastPlayedBase = null;
 				}
-				
 				pGame.Start( AUTOPLAY_TYPE, iRand );
 			}
 		}
@@ -240,25 +271,31 @@ function onPlayerJoin( pPlayer )
 	else if ( ROUNDSTART_TYPE == 2 ) MessagePlayer( "[#FFFF00]The server is admin controlled. Bases are started by admin.", pPlayer );
 	MessagePlayer( "[#FFFF00]If you need more info, use [#00FF00]/help or F1", pPlayer );
 	
+	if ( USE_ACCOUNTS ) CPlayer[ pPlayer.ID ].Join();
+	
 	pSettings.UpdateClientSettings( pPlayer );
+	
+	if (USE_ECHO) decho(2, "**Joined the game!**", pPlayer);
 	
 	return 1;
 }
 
 function onPlayerPart( pPlayer, iReasonID )
 {
+	if ( USE_ACCOUNTS ) pDatabase.SavePlayerData( pPlayer );
 	pPlayerManager.Delete( pPlayer );
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
 	pPlayerManager.CountPlayers();
-	
 	if ( pPlayerManager.IsLoggedIn( pPlayer ) ) adminList.rawdelete( pPlayer.Name );
 	
+	if (USE_ECHO) decho(2, "**Left the game.**", pPlayer);
 	return 1;
 }
 
-function onPlayerRequestClass( pPlayer, iTeamID )
+function onPlayerRequestClass( pPlayer, iTeamID, Key )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	if ( !pPlayer.Spawned )
 	{
 		pPlayer.SetAnim( 7 );
@@ -271,11 +308,31 @@ function onPlayerRequestClass( pPlayer, iTeamID )
 
 function onPlayerSpawn( pPlayer, pSpawn )
 {
-	CPlayer[ pPlayer.ID ].Spawn();
+	if ( USE_ACCOUNTS && !CPlayer[ pPlayer.ID ].LoggedIn )
+	{
+		pPlayer.Health = 1;
+		onPlayerDeath( pPlayer, 125 );
+		//pPlayer.ForceToSpawnScreen();
+		MessagePlayer( "You must login first - /login password", pPlayer );
+		return 0;
+	}
+	else { 
+		if ( GetTickCount() - CPlayer[ pPlayer.ID ].lastspawn < 300 ) {
+			if (USE_ECHO)
+			{
+				decho(3,"Kicking player: " + pPlayer.Name + " (crashing attempt).");
+				KickPlayer(pPlayer);
+			}
+		}
+		CPlayer[ pPlayer.ID ].lastspawn = GetTickCount();
+		CPlayer[ pPlayer.ID ].Spawn();
+		return 1;
+	}
 }
 
 function onPlayerDeath( pPlayer, iReason )
 {
+	//print( iReason );
 	if ( iReason == WEP_VEHICLE ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Vehicle).", 255, 255, 0 );
 	else if ( iReason == WEP_EXPLOSION ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Explosion).", 255, 255, 0 );
 	else if ( iReason == WEP_DROWNED ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Drowned)", 255, 255, 0 );
@@ -284,10 +341,14 @@ function onPlayerDeath( pPlayer, iReason )
 	else if ( iReason == WEP_AFK_KILLER_REASON ) Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Anti AFK kill system).", 255, 255, 0 );
 	else if ( iReason == 125 )
 	{
+		pPlayer.Health = 1;
+		CPlayer[ pPlayer.ID ].Deaths--;
 		Message( "[#ffff00]" + pPlayer.Name + " killed himself." );
-		pPlayer.ForceToSpawnScreen();
+		//pPlayer.ForceToSpawnScreen();
 	}
 	else Message( "* " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffff00] died (Unknown: " + iReason + ").", 255, 255, 0 );
+	
+	CPlayer[ pPlayer.ID ].Deaths++;
 	
 	pPlayerManager.CountPlayers();
 	pPlayerManager.DeleteTeam( pPlayer );
@@ -306,6 +367,9 @@ function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 	Message( "* " + pSettings.GetTeamColor( pKiller.Team ) + pKiller.Name + " [#ffffff]killed " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + " [#ffffff]with " + GetWeaponName( iWeapon ) + "." );
 	if ( pKiller != pPlayer ) pKiller.Score++;
 	
+	CPlayer[ pPlayer.ID ].Deaths++;
+	CPlayer[ pKiller.ID ].Kills++;
+	
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
 	
@@ -320,16 +384,20 @@ function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 		}
 	}
 	
+	if (USE_ECHO) decho(3,"***" + pKiller.Name + "*** killed ***" + pPlayer.Name + "*** (" + GetWeaponName( iWeapon ) + ").");
+	
 	return 1;
 }
 
-function onM16VehicleShot( pPlayer, pVehicle, iWeapon )
+function onM16VehicleShot( pPlayer, pVehicle, iWeapon, Key )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	pVehicle.Health -= 20;
 }
 
-function onM16PlayerKill( pKiller, pPlayer, iWeapon )
+function onM16PlayerKill( pKiller, pPlayer, iWeapon, Key )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	pPlayer.Health = 1;
 	
 	if ( pKiller.Name == pPlayer.Name )
@@ -401,7 +469,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			
 			if ( iAttempts == ADMIN_LOGIN_ATTEMPTS )
 			{
-				MessagePlayer( "[#ff0000][Basemode] [#ffffff] Login attempts limit reached. Banning..." );
+				MessagePlayer( "[#ff0000][Basemode] [#ffffff] Login attempts limit reached. Banning...", pPlayer );
 				BanLUID ( pPlayer.LUID );
 				BanIP ( pPlayer.IP );
 			}
@@ -411,6 +479,10 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	if ( szCommand == "eject" )
 	{
 		pPlayer.RemoveFromVehicle();
+	}
+	else if ( szCommand == "fixbridge" )
+	{
+		CloseSSVBridge();
 	}
 	else if ( szCommand == "help" )
 	{
@@ -443,7 +515,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		MessagePlayer( "[#ffff00] /fix1 or /fix2 [#ffffff] - fix bugged GUI (cursor not showing/hiding)", pPlayer );
 		MessagePlayer( "[#ffff00] /info [#ffffff] - print script informations", pPlayer );
 		MessagePlayer( "[#ffff00] /t <message> or 'Y' key[#ffffff] - teamchat", pPlayer );
-		MessagePlayer( "[#ffff00] /switch[#ffffff] - switch team in lobby", pPlayer );
+		//MessagePlayer( "[#ffff00] /switch[#ffffff] - switch team in lobby", pPlayer );
 	}
 	else if ( szCommand == "info" )
 	{
@@ -452,6 +524,37 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		if ( pGame.IsRoundInProgress ) MessagePlayer( "[#ffff00]Base n ame: [#ffffff]" + pBase.Name + "[#ffff00]" + "Author:[#ffffff]" + pBase.Author + "[#ffff00]Attackers spawn ID: [#ffffff]" + pBase.SpawnID + "[#ffff00]Round Time: [#ffffff]" + pBase.RoundTime + "[#ffff00]Weather: [#ffffff]" + pBase.Weather + "[#ffff00]Hour: [#ffffff]" + pBase.Hour + ":00", pPlayer );
 		MessagePlayer( "[#ffffff] Team 1: [#ff0000] " + pPlayerManager.GetTeamFullName( 0 ) + " - score: " + pPlayerManager.Team1Score, pPlayer );
 		MessagePlayer( "[#ffffff] Team 2: [#0000ff] " + pPlayerManager.GetTeamFullName( 1 ) + " - score: " + pPlayerManager.Team2Score, pPlayer );
+	}
+	else if ( szCommand == "login" )
+	{
+		if (USE_ACCOUNTS) CPlayer[ pPlayer.ID ].Login( szText );
+	}
+	else if ( szCommand == "protect" )
+	{
+		if (!USE_ACCOUNTS) return 0;
+		if ( !pDatabase.CheckLUID( pPlayer ) ) MessagePlayer( "[#ff0000][Error] [#ffffff] This account isn't yours!", pPlayer );
+		else if ( !szText ) MessagePlayer( "[#ff0000][Syntax] [#ffffff] /protect <password>", pPlayer );
+		else if ( szText.len() < 5 ) MessagePlayer( "[#ff0000][Error] [#ffffff] Password must have min 5 chars.", pPlayer );
+		else
+		{
+			CPlayer[ pPlayer.ID ].Password = szText;
+			pDatabase.SavePassword( pPlayer, szText );
+			MessagePlayer( "[#ffffff] Your account is now protected!", pPlayer );
+		}
+	}
+	else if ( szCommand == "stats" || szCommand == "s" || szCommand == "stat" )
+	{
+		if ( !szText ) MessagePlayer( "[#ffff00]Joins: " + CPlayer[pPlayer.ID].Joins + " Kills: " + CPlayer[pPlayer.ID].Kills + " Deaths: " + CPlayer[pPlayer.ID].Deaths + " Wins: " + CPlayer[pPlayer.ID].Wins + " Loses: " + CPlayer[pPlayer.ID].Loses + " Captures: " + CPlayer[pPlayer.ID].Captures, pPlayer );
+		else
+		{
+			local pTargetPlayer = FindPlayer( szText );
+			if ( pTargetPlayer )
+			{
+				local iID = pTargetPlayer.ID;
+				MessagePlayer( "[#ffff00]" + pTargetPlayer.Name + " Joins: " + CPlayer[iID].Joins + " Kills: " + CPlayer[iID].Kills + " Deaths: " + CPlayer[iID].Deaths + " Wins: " + CPlayer[iID].Wins + " Loses: " + CPlayer[iID].Loses, pPlayer );
+			}
+			else MessagePlayer( "[#ffff00]Cannot find " + szText + " player.", pPlayer );
+		}
 	}
 	else if ( szCommand == "kill" )
 	{
@@ -480,18 +583,26 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			return 1;
 		}
 	}
-	else if ( szCommand == "switch" )
-	{
-		pPlayer.ForceToSpawnScreen();
+	//else if ( szCommand == "switch" )
+	//{
+		//pPlayer.ForceToSpawnScreen();
 		/*if ( CPlayer[ pPlayer.ID ].SwitchTeam() )
 		{
 			Message( "[#ffffff]*** " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayer.Name + "[#ffffff] has switched his team to " + pSettings.GetTeamColor( pPlayer.Team ) + pPlayerManager.GetTeamName( pPlayer.Team ) + "[#ffffff]." );
 			if ( pPlayer.Team == 0 || 1 ) MessagePlayer( "[#ffffff]*** [#ffff00]Your team stats: [Members: " + pPlayerManager.GetTeamPlayersCount( pPlayer.Team ) + " | Wins: " + pPlayerManager.GetTeamWins( pPlayer.Team ) + " | Loses: " + pPlayerManager.GetTeamLoses( pPlayer.Team ) + "]", pPlayer );
 		}*/
-	}
+	//}
 	
 	
 	// ################ Admin commands ########################
+	else if ( szCommand == "save" )
+	{
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+			if ( pPlayer ) pDatabase.SavePlayerData( pPlayer );
+		}
+	}
 	else if ( szCommand == "add" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
@@ -538,6 +649,30 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 			Message( "[#00ff00]Administrator " + pPlayer + " has banned " + pTargetPlayer );
 		}
 	}
+	/*else if ( szCommand == "unbanip" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText ) { MessagePlayer("[#ff0000][Syntax] [#ffffff]/unbanip <ip>",pPlayer ); return 0; }
+		
+		UnbanIP( szText );
+		MessagePlayer( "[#00ff00]Unbanned IP: " + szText, pPlayer );
+	}
+	else if ( szCommand == "unbanname" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText ) { MessagePlayer("[#ff0000][Syntax] [#ffffff]/unbanname <name>",pPlayer ); return 0; }
+		
+		UnbanName( szText );
+		MessagePlayer( "[#00ff00]Unbanned name: " + szText, pPlayer );
+	}
+	else if ( szCommand == "unbanluid" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText ) { MessagePlayer("[#ff0000][Syntax] [#ffffff]/unbanluid <luid>",pPlayer ); return 0; }
+		
+		UnbanLUID( szText );
+		MessagePlayer( "[#00ff00]Unbanned LUID: " + szText, pPlayer );
+	}*/
 	else if ( szCommand == "base" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
@@ -621,7 +756,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		if ( !CheckModerator( pPlayer )) return 0;
 		if ( !szText )
 		{
-			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/settype auto|vote|manual or 0|1|2.", pPlayer );
+			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/starttype auto|vote|manual or 0|1|2.", pPlayer );
 			return 0;
 		}
 		if ( szText == "auto" ) 
@@ -688,6 +823,31 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		}
 		else ADMIN_PASSWORD = szText;
 	}
+	else if ( szCommand == "announce" || szCommand == "a" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		BigMessage( szText, 5000, 1 );
+		
+	}
+	else if ( szCommand == "setadminlevel" )
+	{
+		if ( !CheckModerator( pPlayer )) return 0;
+		if ( !szText )
+		{
+			MessagePlayer ( "[#ff0000][Syntax] [#ffffff]/setadminlevel <player>.", pPlayer );
+			return 0;
+		}
+		else 
+		{
+			local pTarget = FindPlayer( szText );
+			if ( !pTarget ) MessagePlayer ( "[#ff0000][Error] [#ffffff]This player does not exist.", pPlayer );
+			else
+			{
+				CPlayer[ pTarget.ID ].AdminLevel = 1;
+				Message( pPlayer.Name + " has set " + pTarget.Name + " admin level (" + szText + ")" );
+			}
+		}
+	}
 	else if ( szCommand == "setpass" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
@@ -695,7 +855,7 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		else SetPassword( szText );
 		Message( "[#00ff00]Administrator " + pPlayer + " has changed server password." );
 	}
-	else if ( szCommand == "switchteams" )
+	else if ( szCommand == "switch" )
 	{
 		if ( !CheckModerator( pPlayer )) return 0;
 		pPlayerManager.SwitchTeams();
@@ -751,6 +911,11 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 		pPlayer.Pos = Vector( -1503.10, -977.10, 11.37 );
 		pPlayer.Angle = 272.5;
 	}
+	else if ( szCommand == "reg" )
+	{
+		if (!USE_ACCOUNTS) return 0;
+		CPlayer[pPlayer.ID].Register();
+	}
 	else if ( szCommand == "pos" )
 	{
 		if ( !pPlayer.Vehicle )
@@ -773,8 +938,9 @@ function onPlayerCommand( pPlayer, szCommand, szText )
 	return 1;
 }
 
-function SendTeamMessage( pPlayer, szMessage )
+function SendTeamMessage( pPlayer, szMessage, Key )
 {
+	//CPlayer[ pPlayer.ID ].CheckKey( Key );
 	if ( !pPlayer.Spawned ) return 0;
 	
 	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage ))
@@ -790,7 +956,13 @@ function SendTeamMessage( pPlayer, szMessage )
 
 function onPlayerChat( pPlayer, szMessage )
 {
-	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) return 1;
+	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) {
+		if (USE_ECHO)
+		{
+			decho(1, szMessage, pPlayer);
+			return 1;
+		}
+	}
 	else return 0;
 }
 
@@ -811,4 +983,5 @@ function onConsoleInput( szCommand, szText )
 		
 		pPlayer.SetIgnored( pPlr, true );
 	}
+	else if ( szCommand == "s" || szCommand == "say" ) Message( "[Console] " +szText );
 }
