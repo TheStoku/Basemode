@@ -2,15 +2,15 @@ Me presents...
 The official AAD (Attack and defence) gamemode for Liberty Unleashed! It was previously dedicated for public release to play clanwars by Liberty City Killers [LCK] clan and to let other clans/players play it on their own servers too. I've started development of this gamemode at around 2010 when I was a beta tester of LU and current version is from 2015.
 
 The gamemode contains:
-- 19 unique bases,
-- 1 spawns for attackers,
+- 30 unique bases,
+- 2 spawns for attackers,
 - 1 closed lobby,
 - well balanced weapons system to make every weapons useful, to avoid shotgun only fights or M16. Every weapon is powerful here and has it pros and cons,
 - complete AAD logic (timeout, killed all players, picked up the base, draws),
 - only attackers can enter vehicles and this is a basic the idea of AAD,
 - administrator luid loging in,
 - admin commands: /bmlogin <pass> (login as administrator), /base <id>, /end, /switch, /add <player id>, /help, /t1/2name <team name>, /resetscore, /del <player id>, /add <player id>
-- player commands: /votebase <id>, /fix or /fix2 to show/hide mouse cursor and toggle camera movement (it was messy sometimes, probably LU bug)
+- player commands: /votebase <id>, /fix or /fix2 to show/hide mouse cursor and toggle camera movement (it was messy sometimes, probably LU bug), /bridgefix
 - a teamchat on "Y" key,
 
 TODO:
