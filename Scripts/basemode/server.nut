@@ -997,7 +997,13 @@ function onPlayerChat( pPlayer, szMessage )
 
 function onPlayerAction( pPlayer, szMessage )
 {
-	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) return 1;
+	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) {
+		if (USE_ECHO)
+		{
+			decho(1, szMessage, pPlayer);
+			return 1;
+		}
+	}
 	else return 0;
 }
 
