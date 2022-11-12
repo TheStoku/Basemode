@@ -107,10 +107,13 @@ function Load()
 
 function onScriptUnload()
 {
-	foreach( iPlayerID in Players )
+	if ( USE_ACCOUNTS )
 	{
-		local pPlayer = FindPlayer( iPlayerID );
-		if ( pPlayer ) pDatabase.SavePlayerData( pPlayer );
+		foreach( iPlayerID in Players )
+		{
+			local pPlayer = FindPlayer( iPlayerID );
+			if ( pPlayer ) pDatabase.SavePlayerData( pPlayer );
+		}
 	}
 	
 	WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", true );
