@@ -115,7 +115,7 @@ function onScriptUnload()
 			if ( pPlayer ) pDatabase.SavePlayerData( pPlayer );
 		}
 	}
-	
+
 	WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", true );
 	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1", pPlayerManager.GetTeamWins( 0 ) );
 	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2", pPlayerManager.GetTeamWins( 1 ) );
@@ -304,7 +304,7 @@ function onPlayerRequestClass( pPlayer, iTeamID, Key )
 		pPlayer.SetAnim( 7 );
 		MessagePlayer( "[#ffffff]Current select: " + pSettings.GetTeamColor( iTeamID ) + pPlayerManager.GetTeamFullName( iTeamID ) + " [#ffff00]| Members: " + pPlayerManager.GetTeamPlayersCount( iTeamID ), pPlayer );
 		CLIENT_UpdateSpawnSelection( pPlayer, pSettings.GetTeamColor( iTeamID ) + pPlayerManager.GetTeamName( iTeamID ));
-		CLIENT_UpdateTeamNames( pPlayer );
+		CLIENT_UpdateTeamNames( pPlayer, false );
 		CLIENT_UpdateScores( pPlayer, false );
 	}
 }
@@ -357,12 +357,7 @@ function onPlayerDeath( pPlayer, iReason )
 	pPlayerManager.DeleteTeam( pPlayer );
 	pPlayerManager.CheckWinner();
 	
-	foreach( iPlayerID in Players )
-	{
-		local pPlayer = FindPlayer( iPlayerID );
-
-		if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
-	}
+	CLIENT_UpdateTeamNames( pPlayer, true );
 }
 
 function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
@@ -382,7 +377,7 @@ function onPlayerKill( pKiller, pPlayer, iWeapon, iBodyPart )
 
 		if ( pPlayer )
 		{
-			CLIENT_UpdateTeamNames( pPlayer );
+			CLIENT_UpdateTeamNames( pPlayer, false );
 			CLIENT_UpdateCaptureTime( pPlayer );			
 		}
 	}

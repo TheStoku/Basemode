@@ -223,11 +223,7 @@ class CPlayerClass
 		pPlayerManager.CountPlayers();
 		CLIENT_UpdateSpawnSelection( this.Instance, "" );
 		
-		foreach( iPlayerID in Players )
-		{
-			local pPlayer = FindPlayer( iPlayerID );
-			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
-		}
+		CLIENT_UpdateTeamNames( null, true );
 		
 		::CloseSSVBridge();
 		::SetSSVBridgeLock( true );
@@ -262,11 +258,8 @@ class CPlayerClass
 		this.Instance.Pos = lobby_spawn_pos[this.Instance.Team];
 		this.Instance.Angle = lobby_spawn_angle[this.Instance.Team];
 		
-		foreach( iPlayerID in Players )
-		{
-			local pPlayer = FindPlayer( iPlayerID );
-			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );				
-		}
+		CLIENT_UpdateTeamNames( null, true );
+	
 		return 1;
 	}
 	function Ban()
@@ -375,7 +368,7 @@ class CSettings
 	
 	function UpdateClientSettings( pPlayer )
 	{
-		CLIENT_UpdateTeamNames( pPlayer );
+		CLIENT_UpdateTeamNames( pPlayer, false );
 		CLIENT_UpdateScores( pPlayer, false );
 		CLIENT_UpdateSettings( pPlayer );
 	}
@@ -552,15 +545,7 @@ class CPlayerManager
 		
 		pPlayerManager.CountMembers();
 		
-		foreach( iPlayerID in Players )
-		{
-			local pPlayer = FindPlayer( iPlayerID );
-
-			if ( pPlayer )
-			{
-				CLIENT_UpdateTeamNames( pPlayer );				
-			}
-		}
+		CLIENT_UpdateTeamNames( null, true );
 	}
 	function DeleteFromRound( pPlayer )
 	{
@@ -645,12 +630,7 @@ class CPlayerManager
 			if ( iTeamID == 1 ) pPlayerManager.Team1Name = szName;
 			else pPlayerManager.Team2Name = szName;
 			
-			foreach( iPlayerID in Players )
-			{
-				local pPlayer = FindPlayer( iPlayerID );
-
-				if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );
-			}
+			CLIENT_UpdateTeamNames( null, true );
 		}
 	}
 	function SetTeam( pPlayer )
@@ -681,12 +661,7 @@ class CPlayerManager
 		if ( g_iDefendingTeam == 0 ) g_iDefendingTeam = 1;
 		else g_iDefendingTeam = 0;
 		
-		foreach( iPlayerID in Players )
-		{
-			local pPlayer = FindPlayer( iPlayerID );
-
-			if ( pPlayer ) CLIENT_UpdateTeamNames( pPlayer );
-		}
+		CLIENT_UpdateTeamNames( null, true );
 	}
 	function CountMembers()
 	{
@@ -1167,11 +1142,20 @@ function CLIENT_UpdateScores( pPlayer, bAll )
 	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
 }
 
-function CLIENT_UpdateTeamNames( pPlayer )
+function CLIENT_UpdateTeamNames( pPlayer, bAll )
 {
 	local szTeam1 = pPlayerManager.GetTeamFullName( 0 ) + " | Members: " + pPlayerManager.GetTeamPlayersCount( 0 ) + " | Alive: " + pPlayerManager.GetTeamMembersCount( 0 );
 	local szTeam2 = pPlayerManager.GetTeamFullName( 1 ) + " | Members: " + pPlayerManager.GetTeamPlayersCount( 1 ) + " | Alive: " + pPlayerManager.GetTeamMembersCount( 1 );
 	
+	if ( bAll )
+	{
+		foreach( iPlayerID in Players )
+		{
+			pPlayer = FindPlayer( iPlayerID );
+
+			if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
+		}
+	}
 	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
 }
 
