@@ -1135,6 +1135,7 @@ function CLIENT_UpdateScores( pPlayer, bAll )
 	}
 	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
 
+	::SetServerRule( "Score", pPlayerManager.Team1Score + ":" + pPlayerManager.Team2Score );
 	storeGameInfo();
 }
 
