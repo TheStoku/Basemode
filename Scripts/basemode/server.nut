@@ -9,6 +9,7 @@ local isScriptReloading			= false;
 
 SCRIPT_DIR						<- "Scripts/basemode/";
 
+storedData <- null;
 g_Timer <- null;
 g_CaptureTimer <- null;
 
@@ -39,7 +40,6 @@ function Load()
 	RegisterRemoteFunc( "SendTeamMessage" );
 
 	// Load necessary files
-	LoadModule( "lu_ini" );
 	dofile( SCRIPT_DIR + "CServer.nut" );
 	dofile( SCRIPT_DIR + "config.nut" );
 	if (USE_ECHO) dofile( SCRIPT_DIR + "decho.nut" );
@@ -81,25 +81,48 @@ function Load()
 	g_CaptureTimer.Stop();
 	
 	// On script reload
-	if ( ReadIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading" ) )
-	{
-		local iPlayersCount = GetMaxPlayers();
-		for( local iPlayerID = 0; iPlayerID < iPlayersCount; iPlayerID++ )
+	try {
+		storedData = file(SCRIPT_DIR + "gameinfo.tmp", "ab+");
+		local data = ["FALSE", pPlayerManager.Team1Score, pPlayerManager.Team2Score, pPlayerManager.Team1Name, pPlayerManager.Team2Name];
+		local buffer = "";
+		local i = 0;
+		
+		while (!storedData.eos())
 		{
-			local pPlayer = FindPlayer( iPlayerID );	
-			if ( pPlayer )
-			{
-				onPlayerJoin( pPlayer );
-				if ( pPlayer.Spawned ) CPlayer[ pPlayer.ID ].Spawn();
+			local char = storedData.readn('c');
+
+			if (char != '\n') buffer += char.tochar();
+			else {
+				data[i] = buffer;
+				i++;
+				buffer = "";
 			}
 		}
 		
-		pPlayerManager.Team1Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1" );
-		pPlayerManager.Team2Score = ReadIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2" );
-		pPlayerManager.Team1Name =  ReadIniString( SCRIPT_DIR + "server.ini", "Settings", "Name1" );
-		pPlayerManager.Team2Name =  ReadIniString( SCRIPT_DIR + "server.ini", "Settings", "Name2" );
-		
-		WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", false );
+		if (data[0] == "TRUE")
+		{
+			print("Loading gameinfo...");
+			pPlayerManager.Team1Score = data[1].tointeger();
+			pPlayerManager.Team2Score = data[2].tointeger();
+			pPlayerManager.Team1Name = data[3].tostring();
+			pPlayerManager.Team2Name = data[4].tostring();
+			
+			local iPlayersCount = GetMaxPlayers();
+			for( local iPlayerID = 0; iPlayerID < iPlayersCount; iPlayerID++ )
+			{
+				local pPlayer = FindPlayer( iPlayerID );	
+				if ( pPlayer ) onPlayerJoin( pPlayer );
+			}
+
+			// Add a short delay
+			NewTimer( CLIENT_UpdateTeamNames, 1000, 1, "null", "true" );
+			NewTimer( CLIENT_UpdateScores, 1000, 1, "null", "true" );
+
+			print("Gameinfo loaded!");
+		}
+	}
+	catch(e) {
+		print(e);
 	}
 	
 	return 1;
@@ -116,14 +139,19 @@ function onScriptUnload()
 		}
 	}
 
-	WriteIniBool( SCRIPT_DIR + "server.ini", "Settings", "Reloading", true );
-	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score1", pPlayerManager.GetTeamWins( 0 ) );
-	WriteIniInteger( SCRIPT_DIR + "server.ini", "Settings", "Score2", pPlayerManager.GetTeamWins( 1 ) );
-	WriteIniString( SCRIPT_DIR + "server.ini", "Settings", "Name1", pPlayerManager.GetTeamName( 0 ) );
-	WriteIniString( SCRIPT_DIR + "server.ini", "Settings", "Name2", pPlayerManager.GetTeamName( 1 ) );
-	Message( "Script reloading..." );
+	storeGameInfo();
+
+	Message( "[#ff0000]Reloading scripts..." );
 	
 	return 1;
+}
+
+function storeGameInfo()
+{
+	storedData = file(SCRIPT_DIR + "gameinfo.tmp", "wb");
+	local t = @"TRUE" + "\n" + pPlayerManager.Team1Score + "\n" + pPlayerManager.Team2Score + "\n" + pPlayerManager.Team1Name + "\n" + pPlayerManager.Team2Name;
+	
+	foreach(char in t) storedData.writen(char, 'c');    
 }
 
 function CompleteRegistration( pPlayer, bAccept, Key )
@@ -261,12 +289,6 @@ function onPlayerJoin( pPlayer )
 	
 	CPlayer[ pPlayer.ID ] = CPlayerClass( pPlayer );
 	pPlayerManager.Add( pPlayer );
-	
-	if ( LUID_AUTOLOGIN )
-	{
-		local iLevel = ReadIniInteger( "Scripts/basemode/admins.ini", pPlayer.LUID, "Level" );
-		if ( iLevel > 0 ) pPlayerManager.Login( pPlayer );
-	}
 
 	MessagePlayer( "[#FFFF00]*** Basemode v" + SCRIPT_VERSION + " is running ***", pPlayer );
 	if ( ROUNDSTART_TYPE == 0 ) MessagePlayer( "[#FFFF00]The server is script controlled. The base will start automatically.", pPlayer );
@@ -277,8 +299,10 @@ function onPlayerJoin( pPlayer )
 	if ( USE_ACCOUNTS ) CPlayer[ pPlayer.ID ].Join();
 	
 	pSettings.UpdateClientSettings( pPlayer );
-	
+
 	if (USE_ECHO) decho(2, "**Joined the game!**", pPlayer);
+
+	if ( pPlayer.Spawned ) CPlayer[ pPlayer.ID ].Spawn();
 	
 	return 1;
 }

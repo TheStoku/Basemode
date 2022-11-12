@@ -575,11 +575,6 @@ class CPlayerManager
 		{
 			adminList.rawset( pPlayer.Name, pPlayer.ID );
 		}
-
-		// Store admins LUID, IP, etc, INI DOESNT WORK ANYMORE
-		//WriteIniString( "Scripts/basemode/admins.ini", pPlayer.LUID, "Name", pPlayer.Name );
-		//WriteIniString( "Scripts/basemode/admins.ini", pPlayer.LUID, "IP", pPlayer.IP );
-		//WriteIniInteger( "Scripts/basemode/admins.ini", pPlayer.LUID, "Level", iLevel );
 	}
 	function IsLoggedIn( pPlayer )
 	{
@@ -629,9 +624,8 @@ class CPlayerManager
 		{
 			if ( iTeamID == 1 ) pPlayerManager.Team1Name = szName;
 			else pPlayerManager.Team2Name = szName;
-			
-			CLIENT_UpdateTeamNames( null, true );
 		}
+		CLIENT_UpdateTeamNames( null, true );
 	}
 	function SetTeam( pPlayer )
 	{
@@ -1140,6 +1134,8 @@ function CLIENT_UpdateScores( pPlayer, bAll )
 		}
 	}
 	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateScores", pPlayerManager.Team1Score, pPlayerManager.Team2Score );
+
+	storeGameInfo();
 }
 
 function CLIENT_UpdateTeamNames( pPlayer, bAll )
@@ -1156,7 +1152,9 @@ function CLIENT_UpdateTeamNames( pPlayer, bAll )
 			if ( pPlayer ) CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
 		}
 	}
-	CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
+	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
+
+	storeGameInfo();
 }
 
 function CLIENT_UpdateSpawnSelection( pPlayer, szName )

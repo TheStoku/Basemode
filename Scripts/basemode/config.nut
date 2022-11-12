@@ -5,7 +5,6 @@ ADMIN_LEVEL					<- 1;		// level to grant after /bmlogin
 ADMIN_LOGIN_ATTEMPTS		<- 3;		// login attempts before ban
 PLAYER_LOGIN_ATTEMPTS		<- 5;		// player login attempts
 PUNISHMENT_METHOD			<- 0;		// type of punishment on key mismatch (0=kick, 1=ban)
-LUID_AUTOLOGIN				<- false;	// enable/disable LUID autologin
 NUMBER_OF_BASES				<- 30;		// number of bases for autoplay system. Atm. 1-19.
 NUMBER_OF_ARENAS			<- 0;		// number of arenas for autoplay system.
 ROUNDSTART_TYPE				<- 0;		// 0-start random base, 1-vote, 2-admin controlled
