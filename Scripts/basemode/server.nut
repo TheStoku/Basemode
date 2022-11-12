@@ -51,6 +51,8 @@ function Load()
 		dofile( SCRIPT_DIR + "CAccounts.nut" );
 		pDatabase <- CDatabase();
 	}
+
+	if ( USE_GEOIP ) LoadModule( "geoip" );
 	
 	// Configure server settings
 	SetGamemodeName( "BaseMode (AAD)" );
@@ -300,11 +302,16 @@ function onPlayerJoin( pPlayer )
 	
 	pSettings.UpdateClientSettings( pPlayer );
 
-	if (USE_ECHO) decho(2, "**Joined the game!**", pPlayer);
-
+	// Join message
+	local joinMessage = "* " + pPlayer.Name + " has joined the game! (ID: " + pPlayer.ID + ")";
+	if (USE_GEOIP && geoip_country_name_by_addr(pPlayer.IP)) joinMessage = "*" + pPlayer.Name + " has connected from " + geoip_country_name_by_addr(pPlayer.IP) + "! (ID: " + pPlayer.ID + ")";
+	if (USE_ECHO) decho(2, "*" + joinMessage + "**", pPlayer);
+	MessageAllExcept( joinMessage, pPlayer, 255, 255, 0 );
+	
+	// Re-add spawned players to the gamelogic
 	if ( pPlayer.Spawned ) CPlayer[ pPlayer.ID ].Spawn();
 	
-	return 1;
+	return 0;
 }
 
 function onPlayerPart( pPlayer, iReasonID )

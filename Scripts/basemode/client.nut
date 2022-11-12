@@ -1298,7 +1298,6 @@ function GetPartReasonFromID( iReasonID )
 
 function onPlayerJoin( pPlayer )
 {
-	Message( "* " + pPlayer.Name + " has joined the game! (ID: " + pPlayer.ID + ")", Colour( 255, 255, 0 ));
 	if ( !SETTING_MUTE ) PlayFrontEndTrack( 191 );
 	
 	return 0;

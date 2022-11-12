@@ -20,6 +20,7 @@ CHAT_REPEAT_ALLOWED			<- 3;		// How many repeats are allowed before warn.
 TEAM_BALANCE_DIFFERENCE		<- null;	// Set null to disable team balancer.
 USE_ACCOUNTS				<- false;
 USE_ECHO                    <- false;   // Enable, if server is powered with Stoku's Discord echo.
+USE_GEOIP					<- false;	// Toggle GeoIP usage. Needs GeoIP plugin and database.
 
 // Lobby Settings 			- [ RED, BLUE ]
 lobby_spawn_pos				<- [ Vector( 165.10, -1003.50, 29.53 ), Vector( 165.74, -990.81, 29.53 ) ];
@@ -28,7 +29,7 @@ LOBBY_WEATHER				<- 0;		// 0 - Sun | 1 - Cloud | 2 - Rain | 3 - Fog
 LOBBY_HOUR					<- -1;		// -1 sync with server time
 
 // Server settings
-SetServerName( "(Official) Liberty City Killers:Basemode " + SCRIPT_VERSION +" Server [lck.gta3.pl]" );
+SetServerName( "Basemode " + SCRIPT_VERSION +" Server [lck.gta3.pl]" );
 SetMaxPlayers( 32 );
 //SetPort( 2301 );
 SetPassword( "" );
