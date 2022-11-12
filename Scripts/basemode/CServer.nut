@@ -1155,6 +1155,7 @@ function CLIENT_UpdateTeamNames( pPlayer, bAll )
 	}
 	else CallClientFunc( pPlayer, "basemode/client.nut", "UpdateTeamNames", szTeam1, szTeam2 );
 
+	::SetServerRule( "Teams", pPlayerManager.Team1Name + " vs " + pPlayerManager.Team2Name );
 	storeGameInfo();
 }
 
