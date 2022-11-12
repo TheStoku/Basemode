@@ -354,7 +354,7 @@ function onPlayerSpawn( pPlayer, pSpawn )
 		if ( GetTickCount() - CPlayer[ pPlayer.ID ].lastspawn < 300 ) {
 			if (USE_ECHO)
 			{
-				decho(3,"Kicking player: " + pPlayer.Name + " (crashing attempt).");
+				if (USE_ECHO) decho(3,"Kicking player: " + pPlayer.Name + " (crashing attempt).");
 				KickPlayer(pPlayer);
 			}
 		}
@@ -988,7 +988,7 @@ function onPlayerChat( pPlayer, szMessage )
 	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) {
 		if (USE_ECHO)
 		{
-			decho(1, szMessage, pPlayer);
+			if (USE_ECHO) decho(1, szMessage, pPlayer);
 			return 1;
 		}
 	}
@@ -1000,7 +1000,7 @@ function onPlayerAction( pPlayer, szMessage )
 	if ( CPlayer[ pPlayer.ID ].DetectSpam( szMessage )) {
 		if (USE_ECHO)
 		{
-			decho(1, szMessage, pPlayer);
+			if (USE_ECHO) decho(1, szMessage, pPlayer);
 			return 1;
 		}
 	}
